@@ -31,7 +31,7 @@
   
   <ciManagement>
     <system>Jenkins</system>
-    <url>https://kasisoft.com/ci/job/mgnl.fmx/</url>
+    <url>https://kasisoft.com/ci/job/mgnl.jcx/</url>
   </ciManagement>
   
   <issueManagement>
@@ -376,13 +376,13 @@
   
   <distributionManagement>
     <repository>
-      <id>kasisoft-mgnl-releases</id>
-      <name>kasisoft-mgnl-releases</name>
+      <id>kasisoft-mgnl</id>
+      <name>kasisoft-mgnl</name>
       <url>https://kasisoft.com/artifactory/mgnl</url>
     </repository>
     <snapshotRepository>
-      <id>kasisoft-mgnl-snapshots</id>
-      <name>kasisoft-mgnl-snapshots</name>
+      <id>kasisoft-mgnl</id>
+      <name>kasisoft-mgnl</name>
       <url>https://kasisoft.com/artifactory/mgnl</url>
     </snapshotRepository>
   </distributionManagement>
