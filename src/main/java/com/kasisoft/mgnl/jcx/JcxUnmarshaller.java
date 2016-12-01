@@ -253,10 +253,11 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
   }
   
   private void introspectField( Class<?> basetype, Class<?> type, Field field, Map<String, PropertyDescription> properties ) {
-    String              name        = fieldNameGenerator.apply( field.getName() );
-    PropertyDescription description = new PropertyDescription();
+    String              name          = fieldNameGenerator.apply( field.getName() );
+    String              propertyName  = getPropertyName( field, name );
+    PropertyDescription description   = new PropertyDescription();
     description.setOwningType( basetype );
-    description.setPropertyName( name );
+    description.setPropertyName( propertyName );
     description.setField( field );
     if( Collection.class.isAssignableFrom( field.getType() ) ) {
       description.setCollectionType( field.getType() );
@@ -274,6 +275,30 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
       // will be reported later
     }
     properties.put( name, description );
+  }
+  
+  private String getPropertyName( Field field, String defaultName ) {
+    String        result  = defaultName;
+    String        name    = null;
+    XmlAttribute  xmlAttr = field.getAnnotation( XmlAttribute.class );
+    name                  = xmlAttr != null ? cleanup( xmlAttr.name() ) : null;
+    if( name == null ) {
+      XmlElement xmlElem = field.getAnnotation( XmlElement.class );
+      name               = xmlElem != null ? cleanup( xmlElem.name() ) : null; 
+    }
+    if( name != null ) {
+      result = name;
+    }
+    return result;
+  }
+  
+  private String cleanup( String str ) {
+    String result = str;
+    if( "##default".equals( result ) ) {
+      result = null;
+    }
+    result = StringFunctions.cleanup( result );
+    return result;
   }
 
   @AllArgsConstructor
