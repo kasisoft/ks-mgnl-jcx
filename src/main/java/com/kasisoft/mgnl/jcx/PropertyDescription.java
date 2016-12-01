@@ -6,38 +6,88 @@ import java.lang.reflect.*;
 
 import java.util.function.*;
 
-import lombok.experimental.*;
-
-import lombok.*;
-
 /**
  * A proprietary description of a property.
  * 
  * @author daniel.kasmeroglu@kasisoft.net
  */
-@Setter @Getter
-@FieldDefaults(level = AccessLevel.PRIVATE)
 class PropertyDescription {
 
   // the class the property belongs to
-  Class<?>                      owningType;
+  private Class<?>                      owningType;
   
   // the name of the property
-  String                        propertyName;
+  private String                        propertyName;
   
   // the reflection field for the property
-  Field                         field;
+  private Field                         field;
   
   // the setter method for the property. only has one argument
-  Method                        setter;
+  private Method                        setter;
   
   // the type of the collection/map. maybe null
-  Class<?>                      collectionType;
+  private Class<?>                      collectionType;
   
   // the type of the field or if the collection type is set the generics type
-  Class<?>                      type;
+  private Class<?>                      type;
   
   // the function to load the property value (node, property name, target object)
-  BiFunction<Node, String, ?>   loader;
+  private BiFunction<Node, String, ?>   loader;
+
+  public Class<?> getOwningType() {
+    return owningType;
+  }
+
+  public void setOwningType( Class<?> newOwningType ) {
+    owningType = newOwningType;
+  }
+
+  public String getPropertyName() {
+    return propertyName;
+  }
+
+  public void setPropertyName( String newPropertyName ) {
+    propertyName = newPropertyName;
+  }
+
+  public Field getField() {
+    return field;
+  }
+
+  public void setField( Field newField ) {
+    field = newField;
+  }
+
+  public Method getSetter() {
+    return setter;
+  }
+
+  public void setSetter( Method newSetter ) {
+    setter = newSetter;
+  }
+
+  public Class<?> getCollectionType() {
+    return collectionType;
+  }
+
+  public void setCollectionType( Class<?> newCollectionType ) {
+    collectionType = newCollectionType;
+  }
+
+  public Class<?> getType() {
+    return type;
+  }
+
+  public void setType( Class<?> newType ) {
+    type = newType;
+  }
+
+  public BiFunction<Node, String, ?> getLoader() {
+    return loader;
+  }
+
+  public void setLoader( BiFunction<Node, String, ?> newLoader ) {
+    loader = newLoader;
+  }
 
 } /* ENDCLASS */

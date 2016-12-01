@@ -5,6 +5,9 @@ import com.kasisoft.libs.common.text.*;
 import com.kasisoft.libs.common.annotation.*;
 import com.kasisoft.libs.common.function.*;
 
+import org.slf4j.*;
+
+import javax.annotation.*;
 import javax.inject.*;
 import javax.jcr.*;
 import javax.jcr.Node;
@@ -18,12 +21,6 @@ import java.util.stream.*;
 
 import java.util.*;
 
-import lombok.extern.slf4j.*;
-
-import lombok.experimental.*;
-
-import lombok.*;
-
 import info.magnolia.objectfactory.*;
 
 /**
@@ -32,18 +29,18 @@ import info.magnolia.objectfactory.*;
  * @author daniel.kasmeroglu@kasisoft.net
  */
 @Singleton
-@Slf4j
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
 
-  static final Set<String> IGNORABLES = new HashSet<>( Arrays.asList(
+  private static final Logger log = LoggerFactory.getLogger( JcxUnmarshaller.class );
+  
+  private static final Set<String> IGNORABLES = new HashSet<>( Arrays.asList(
     "log", "contentMap", "unmarshaller", "content", "definition", "parentModel", "loader"
   ) );
 
-  static final Consumer<Object> DO_NOTHING = $ -> {};
+  private static final Consumer<Object> DO_NOTHING = $ -> {};
   
-  Function<String, String>          fieldNameGenerator;
-  Map<Class<?>, TypeUnmarshaller>   unmarshallers;
+  private Function<String, String>          fieldNameGenerator;
+  private Map<Class<?>, TypeUnmarshaller>   unmarshallers;
   
   public JcxUnmarshaller() {
     fieldNameGenerator  = Function.identity();
@@ -70,7 +67,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
    * 
    * @return   The loading function. Not <code>null</code>.
    */
-  public synchronized <T> BiConsumer<Node, T> createLoader( @NonNull Class<T> type ) {
+  public synchronized <T> BiConsumer<Node, T> createLoader( @Nonnull  Class<T> type ) {
     return getUnmarshaller( type )::apply;
   }
 
@@ -82,7 +79,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
    * 
    * @return   The loading function. Not <code>null</code>.
    */
-  public synchronized <T> TriConsumer<Node, String, T> createSubnodeLoader( @NonNull Class<T> type ) {
+  public synchronized <T> TriConsumer<Node, String, T> createSubnodeLoader( @Nonnull Class<T> type ) {
     return getUnmarshaller( type )::applySubnode;
   }
 
@@ -93,7 +90,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
    * 
    * @return   The creation function. Not <code>null</code>.
    */
-  public synchronized <T> Function<Node, T> createCreator( @NonNull Class<T> type ) {
+  public synchronized <T> Function<Node, T> createCreator( @Nonnull Class<T> type ) {
     return getUnmarshaller( type )::create;
   }
 
@@ -301,13 +298,17 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
     return result;
   }
 
-  @AllArgsConstructor
-  @FieldDefaults(level = AccessLevel.PRIVATE)
   private static class TypeUnmarshaller {
 
-    List<PropertyDescription>   descriptions;
-    Supplier<?>                 supplier;
-    Consumer<Object>            postprocess;
+    private List<PropertyDescription>   descriptions;
+    private Supplier<?>                 supplier;
+    private Consumer<Object>            postprocess;
+    
+    public TypeUnmarshaller( List<PropertyDescription> descs, Supplier<?> sup, Consumer<Object> post ) {
+      descriptions  = descs;
+      supplier      = sup;
+      postprocess   = post;
+    }
     
     public void applySubnode( Node jcrNode, String nodeName, Object destination ) {
       try {

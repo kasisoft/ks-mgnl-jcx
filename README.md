@@ -22,8 +22,6 @@ Requirements
 Development Setup
 -----------------
 
-* Lombok is used, so check it out: https://projectlombok.org/
-
 
 Jenkins (CI)
 ------------
