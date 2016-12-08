@@ -2,7 +2,7 @@
 <!DOCTYPE module SYSTEM "module.dtd">
 <module>
 
-  <name>jcx</name>
+  <name>mgnl-jcx</name>
   <displayName>Jcx</displayName>
   <description>Jcx</description>
   <versionHandler>com.kasisoft.mgnl.jcx.internal.JcxVersionHandler</versionHandler>
