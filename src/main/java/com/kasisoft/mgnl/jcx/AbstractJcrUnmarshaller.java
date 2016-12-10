@@ -39,7 +39,7 @@ class AbstractJcrUnmarshaller {
     result.put( Short     . TYPE , (n, p) -> toShort      ( n, p, (short) 0 ) );
     result.put( Integer   . TYPE , (n, p) -> toInteger    ( n, p, 0         ) );
     result.put( Long      . TYPE , (n, p) -> toLong       ( n, p, 0L        ) );
-    result.put( Float     . TYPE , (n, p) -> toFloat      ( n, p, (float) 0 ) );
+    result.put( Float     . TYPE , (n, p) -> toFloat      ( n, p, 0         ) );
     result.put( Double    . TYPE , (n, p) -> toDouble     ( n, p, 0.0       ) );
     
     result.put( Boolean   . class, this::toBoolean    );
