@@ -19,6 +19,9 @@ class PropertyDescription {
   // the name of the property
   private String                        propertyName;
   
+  // if set, the element is organized below propertyName
+  private String                        subProperty;
+  
   // the reflection field for the property
   private Field                         field;
   
@@ -48,6 +51,14 @@ class PropertyDescription {
 
   public void setPropertyName( String newPropertyName ) {
     propertyName = newPropertyName;
+  }
+  
+  public String getSubProperty() {
+    return subProperty;
+  }
+  
+  public void setSubProperty( String newSubProperty ) {
+    subProperty = newSubProperty;
   }
 
   public Field getField() {

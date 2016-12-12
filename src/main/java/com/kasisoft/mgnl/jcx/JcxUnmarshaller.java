@@ -1,5 +1,7 @@
 package com.kasisoft.mgnl.jcx;
 
+import info.magnolia.objectfactory.*;
+
 import com.kasisoft.libs.common.text.*;
 
 import com.kasisoft.libs.common.annotation.*;
@@ -20,8 +22,6 @@ import java.util.function.*;
 import java.util.stream.*;
 
 import java.util.*;
-
-import info.magnolia.objectfactory.*;
 
 /**
  * This helper allows to mark attributes using jaxb annotations in order to fill them automatically. 
@@ -127,7 +127,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
         if( isAttribute( property ) ) {
           property.setLoader( getAttributeLoader( property.getType() ) );
         } else if( property.getCollectionType() != null ) {
-          property.setLoader( ($1, $2) -> getElements( $1, $2, property.getType() ) );
+          property.setLoader( ($1, $2) -> getElements( $1, $2, property.getSubProperty(), property.getType() ) );
         } else {
           property.setLoader( ($1, $2) -> getElement( $1, $2, property.getType() ) );
         }
@@ -146,8 +146,8 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
     }
   }
   
-  private <R> List<R> getElements( Node node, String nodeName, Class<R> type ) {
-    List<Node> nodes  = getNodes( node, nodeName );
+  private <R> List<R> getElements( Node node, String nodeName, String subProperty, Class<R> type ) {
+    List<Node> nodes  = getNodes( node, nodeName, subProperty );
     List<R>    result = Collections.emptyList();
     if( ! nodes.isEmpty() ) {
       result = new ArrayList<>();
@@ -170,15 +170,29 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
     return result;
   }
 
-  private List<Node> getNodes( Node node, String nodeName ) {
+  private List<Node> getNodes( Node node, String nodeName, String subProperty ) {
     List<Node> result = Collections.emptyList();
     try {
-      if( node.hasNode( nodeName ) ) {
-        result = new ArrayList<>();
-        Node dataNode = node.getNode( nodeName );
-        NodeIterator iterator = dataNode.getNodes();
+      if( subProperty == null ) {
+        if( node.hasNode( nodeName ) ) {
+          // children are organized directly below the named node
+          result                = new ArrayList<>();
+          Node         dataNode = node.getNode( nodeName );
+          NodeIterator iterator = dataNode.getNodes();
+          while( iterator.hasNext() ) {
+            result.add( iterator.nextNode() );
+          }
+        }
+      } else {
+        // multivalue based persistence (multivalue/delegation)
+        result                = new ArrayList<>();
+        NodeIterator iterator = node.getNodes( String.format( "%s*", nodeName ) );
         while( iterator.hasNext() ) {
-          result.add( iterator.nextNode() );
+          Node parent = iterator.nextNode();
+          Node child  = parent.getNode( subProperty );
+          if( child != null ) {
+            result.add( child );
+          }
         }
       }
     } catch( Exception ex ) {
@@ -252,9 +266,16 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
   private void introspectField( Class<?> basetype, Class<?> type, Field field, Map<String, PropertyDescription> properties ) {
     String              name          = fieldNameGenerator.apply( field.getName() );
     String              propertyName  = getPropertyName( field, name );
+    String              subProperty   = null;
+    XmlElementWrapper   elemWrapper   = field.getAnnotation( XmlElementWrapper.class );
+    if( elemWrapper != null ) {
+      subProperty   = propertyName;
+      propertyName  = elemWrapper.name();
+    }
     PropertyDescription description   = new PropertyDescription();
     description.setOwningType( basetype );
     description.setPropertyName( propertyName );
+    description.setSubProperty( subProperty );
     description.setField( field );
     if( Collection.class.isAssignableFrom( field.getType() ) ) {
       description.setCollectionType( field.getType() );
