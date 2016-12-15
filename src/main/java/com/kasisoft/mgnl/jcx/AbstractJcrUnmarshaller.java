@@ -29,7 +29,11 @@ class AbstractJcrUnmarshaller {
   public synchronized void addAttributeLoader( @Nonnull Class<?> type, @Nonnull BiFunction<Node, String, ?> propertyAccessor ) {
     attributeLoaders.put( type, propertyAccessor );
   }
-  
+
+  public synchronized void removeAttributeLoader( @Nonnull Class<?> type ) {
+    attributeLoaders.remove( type );
+  }
+
   private Map<Class<?>, BiFunction<Node, String, ?>> setupAttributeLoaders() {
     Map<Class<?>, BiFunction<Node, String, ?>> result = new HashMap<>();
     
