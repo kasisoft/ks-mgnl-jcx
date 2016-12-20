@@ -2,6 +2,8 @@ package com.kasisoft.mgnl.jcx;
 
 import info.magnolia.objectfactory.*;
 
+import info.magnolia.jcr.util.*;
+
 import com.kasisoft.libs.common.text.*;
 
 import com.kasisoft.libs.common.annotation.*;
@@ -138,7 +140,15 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
         postprocess = $ -> ((IPostProcessor) $).postprocess();
       }
       
-      return new TypeUnmarshaller( properties, () -> Components.newInstance( type ), postprocess );
+      String       refproperty  = null;
+      String       refworkspace = null;
+      JcxReference jcxReference = type.getAnnotation( JcxReference.class );
+      if( jcxReference != null ) {
+        refproperty  = jcxReference.property();
+        refworkspace = jcxReference.value();
+      }
+      
+      return new TypeUnmarshaller( properties, () -> Components.newInstance( type ), postprocess, refworkspace, refproperty );
       
     } catch( Exception ex ) {
       log.error( "Failed to create jcx unmarshaller for type '{}'. Cause: {}", type.getName(), ex.getLocalizedMessage(), ex );
@@ -324,11 +334,15 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
     private List<PropertyDescription>   descriptions;
     private Supplier<?>                 supplier;
     private Consumer<Object>            postprocess;
+    private String                      refProperty;
+    private String                      refWorkspace;
     
-    public TypeUnmarshaller( List<PropertyDescription> descs, Supplier<?> sup, Consumer<Object> post ) {
+    public TypeUnmarshaller( List<PropertyDescription> descs, Supplier<?> sup, Consumer<Object> post, String rWorkspace, String rProperty ) {
       descriptions  = descs;
       supplier      = sup;
       postprocess   = post;
+      refProperty   = rProperty;
+      refWorkspace  = rWorkspace;
     }
     
     public void applySubnode( Node jcrNode, String nodeName, Object destination ) {
@@ -343,11 +357,32 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
   
     public void apply( Node jcrNode, Object destination ) {
       try {
+        if( destination.getClass().getName().contains("ProductModel")) {
+          System.err.println("-");
+        }
         descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
+        Node refNode = getRefNode( jcrNode );
+        if( refNode != null ) {
+          descriptions.forEach( $ -> apply( refNode, destination, $ ) );
+        }
         postprocess.accept( destination );
       } catch( Exception ex ) {
         throw JcxException.wrap( ex );
       }
+    }
+    
+    private Node getRefNode( Node jcrNode ) {
+      Node result = null;
+      if( refWorkspace != null ) {
+        String uuid = StringFunctions.cleanup( PropertyUtil.getString( jcrNode, refProperty ) );
+        if( uuid != null ) {
+          uuid = StringFunctions.cleanup( StringFunctions.trim( uuid, "[]{} \t", null ) );
+        }
+        if( uuid != null ) {
+          result = SessionUtil.getNodeByIdentifier( refWorkspace, uuid );
+        }
+      }
+      return result;
     }
     
     public <R> R create( Node jcrNode ) {
