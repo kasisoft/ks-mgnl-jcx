@@ -16,6 +16,7 @@ import javax.inject.*;
 import javax.jcr.*;
 import javax.jcr.Node;
 import javax.xml.bind.annotation.*;
+import javax.xml.bind.annotation.adapters.*;
 
 import java.lang.reflect.*;
 
@@ -127,7 +128,11 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
       
       for( PropertyDescription property : properties ) {
         if( isAttribute( property ) ) {
-          property.setLoader( getAttributeLoader( property.getType() ) );
+          if( property.getXmlAdapter() != null ) {
+            property.setLoader( getXmlAdapterLoader( property.getXmlAdapter() ) );
+          } else {
+            property.setLoader( getAttributeLoader( property.getType() ) );
+          }
         } else if( property.getCollectionType() != null ) {
           property.setLoader( ($1, $2) -> getElements( $1, $2, property.getSubProperty(), property.getType() ) );
         } else {
@@ -274,15 +279,17 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
   }
   
   private void introspectField( Class<?> basetype, Class<?> type, Field field, Map<String, PropertyDescription> properties ) {
-    String              name          = fieldNameGenerator.apply( field.getName() );
-    String              propertyName  = getPropertyName( field, name );
-    String              subProperty   = null;
-    XmlElementWrapper   elemWrapper   = field.getAnnotation( XmlElementWrapper.class );
+    String                name          = fieldNameGenerator.apply( field.getName() );
+    String                propertyName  = getPropertyName( field, name );
+    String                subProperty   = null;
+    XmlJavaTypeAdapter    xmlAdapter    = field.getAnnotation( XmlJavaTypeAdapter.class ); 
+    XmlElementWrapper     elemWrapper   = field.getAnnotation( XmlElementWrapper.class );
     if( elemWrapper != null ) {
       subProperty   = propertyName;
       propertyName  = elemWrapper.name();
     }
     PropertyDescription description   = new PropertyDescription();
+    description.setXmlAdapter( xmlAdapter != null ? xmlAdapter.value() : null );
     description.setOwningType( basetype );
     description.setPropertyName( propertyName );
     description.setSubProperty( subProperty );
@@ -357,9 +364,6 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
   
     public void apply( Node jcrNode, Object destination ) {
       try {
-        if( destination.getClass().getName().contains("ProductModel")) {
-          System.err.println("-");
-        }
         descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
         Node refNode = getRefNode( jcrNode );
         if( refNode != null ) {

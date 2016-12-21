@@ -1,9 +1,12 @@
 package com.kasisoft.mgnl.jcx;
 
+import info.magnolia.objectfactory.*;
+
 import info.magnolia.jcr.util.*;
 
 import javax.annotation.*;
 import javax.jcr.*;
+import javax.xml.bind.annotation.adapters.*;
 
 import java.util.function.*;
 
@@ -16,10 +19,37 @@ import java.util.*;
  */
 class AbstractJcrUnmarshaller {
 
-  private Map<Class<?>, BiFunction<Node, String, ?>>    attributeLoaders;
+  private Map<Class<?>, BiFunction<Node, String, ?>>                      attributeLoaders;
+  private Map<Class<? extends XmlAdapter>, BiFunction<Node, String, ?>>   xmlAdapterLoaders;
 
   public AbstractJcrUnmarshaller() {
     attributeLoaders  = setupAttributeLoaders();
+    xmlAdapterLoaders = new HashMap<>();
+  }
+  
+  protected <R> BiFunction<Node, String, R> getXmlAdapterLoader( @Nonnull Class<? extends XmlAdapter> xmlAdapter ) {
+    BiFunction<Node, String, R> result = (BiFunction<Node, String, R>) xmlAdapterLoaders.get( xmlAdapter );
+    if( result == null ) {
+      XmlAdapter<String, R> adapter = null;
+      try {
+        adapter = Components.getComponent( xmlAdapter );
+      } catch( Exception ex ) {
+        adapter = Components.newInstance( xmlAdapter );
+      }
+      final XmlAdapter<String, R> xml = adapter;
+      result = ($1, $2) -> exceptionWrapper( xml, $1, $2 );
+      xmlAdapterLoaders.put( xmlAdapter, result );
+    }
+    return result;
+  }
+  
+  private <R> R exceptionWrapper( XmlAdapter<String, R> adapter, Node node, String property ) {
+    try {
+      BiFunction<Node, String, String> strLoader = getAttributeLoader( String.class );
+      return adapter.unmarshal( strLoader.apply( node, property ) );
+    } catch( Exception ex ) {
+      throw JcxException.wrap( ex );
+    }
   }
   
   protected <R> BiFunction<Node, String, R> getAttributeLoader( @Nonnull Class<R> type ) {

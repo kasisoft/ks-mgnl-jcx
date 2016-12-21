@@ -1,6 +1,7 @@
 package com.kasisoft.mgnl.jcx;
 
 import javax.jcr.*;
+import javax.xml.bind.annotation.adapters.*;
 
 import java.lang.reflect.*;
 
@@ -14,29 +15,39 @@ import java.util.function.*;
 class PropertyDescription {
 
   // the class the property belongs to
-  private Class<?>                      owningType;
+  private Class<?>                                  owningType;
   
   // the name of the property
-  private String                        propertyName;
+  private String                                    propertyName;
   
   // if set, the element is organized below propertyName
-  private String                        subProperty;
+  private String                                    subProperty;
   
   // the reflection field for the property
-  private Field                         field;
+  private Field                                     field;
   
   // the setter method for the property. only has one argument
-  private Method                        setter;
+  private Method                                    setter;
   
   // the type of the collection/map. maybe null
-  private Class<?>                      collectionType;
+  private Class<?>                                  collectionType;
   
   // the type of the field or if the collection type is set the generics type
-  private Class<?>                      type;
+  private Class<?>                                  type;
   
   // the function to load the property value (node, property name, target object)
-  private BiFunction<Node, String, ?>   loader;
+  private BiFunction<Node, String, ?>               loader;
 
+  private Class<? extends XmlAdapter>               xmlAdapter;
+  
+  public Class<? extends XmlAdapter> getXmlAdapter() {
+    return xmlAdapter;
+  }
+  
+  public void setXmlAdapter( Class<? extends XmlAdapter> newXmlAdapter ) {
+    xmlAdapter = newXmlAdapter;
+  }
+  
   public Class<?> getOwningType() {
     return owningType;
   }
