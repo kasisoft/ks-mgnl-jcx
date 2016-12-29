@@ -36,6 +36,9 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
 
   private static final Logger log = LoggerFactory.getLogger( JcxUnmarshaller.class );
   
+  public  static final String NAME_DIRECT   = "##direct";
+  private static final String NAME_DEFAULT  = "##default";
+  
   private static final Set<String> IGNORABLES = new HashSet<>( Arrays.asList(
     "log", "contentMap", "unmarshaller", "content", "definition", "parentModel", "loader"
   ) );
@@ -218,12 +221,16 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
 
   private Node getNode( Node node, String nodeName ) {
     Node result = null;
-    try {
-      if( node.hasNode( nodeName ) ) {
-        result = node.getNode( nodeName );
+    if( NAME_DIRECT.equals( nodeName ) ) {
+      result = node;
+    } else {
+      try {
+        if( node.hasNode( nodeName ) ) {
+          result = node.getNode( nodeName );
+        }
+      } catch( Exception ex ) {
+        throw JcxException.wrap( ex );
       }
-    } catch( Exception ex ) {
-      throw JcxException.wrap( ex );
     }
     return result;
   }
@@ -329,7 +336,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
   
   private String cleanup( String str ) {
     String result = str;
-    if( "##default".equals( result ) ) {
+    if( NAME_DEFAULT.equals( result ) ) {
       result = null;
     }
     result = StringFunctions.cleanup( result );
