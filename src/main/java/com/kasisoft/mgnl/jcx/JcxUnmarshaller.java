@@ -40,7 +40,8 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
   private static final String NAME_DEFAULT  = "##default";
   
   private static final Set<String> IGNORABLES = new HashSet<>( Arrays.asList(
-    "log", "contentMap", "unmarshaller", "content", "definition", "parentModel", "loader"
+    "log", "contentMap", "unmarshaller", "content", "definition", "parentModel", "loader", "cmsfn", "imgfn",
+    "damfn"
   ) );
 
   private static final Consumer<Object> DO_NOTHING = $ -> {};
