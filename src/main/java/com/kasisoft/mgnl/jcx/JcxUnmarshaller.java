@@ -74,7 +74,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
    * 
    * @return   The loading function. Not <code>null</code>.
    */
-  public synchronized <T> BiConsumer<Node, T> createLoader( @Nonnull  Class<T> type ) {
+  public synchronized <T> BiFunction<Node, T, T> createLoader( @Nonnull Class<T> type ) {
     return getUnmarshaller( type )::apply;
   }
 
@@ -86,7 +86,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
    * 
    * @return   The loading function. Not <code>null</code>.
    */
-  public synchronized <T> TriConsumer<Node, String, T> createSubnodeLoader( @Nonnull Class<T> type ) {
+  public synchronized <T> TriFunction<Node, String, T, T> createSubnodeLoader( @Nonnull Class<T> type ) {
     return getUnmarshaller( type )::applySubnode;
   }
 
@@ -126,6 +126,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
       
       List<PropertyDescription> properties = introspect( type ).stream()
         .filter( this::hasGenericsType )
+        .filter( this::isNotTransient )
         .filter( this::hasSetter )
         .filter( this::isInteresting )
         .collect( Collectors.toList() );
@@ -236,6 +237,10 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
     return result;
   }
 
+  private boolean isNotTransient( PropertyDescription description ) {
+    return description.getField().getAnnotation( XmlTransient.class ) == null;
+  }
+  
   private boolean hasGenericsType( PropertyDescription description ) {
     boolean result = description.getCollectionType() == null || description.getType() != null;
     if( ! result ) {
@@ -360,17 +365,18 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
       refWorkspace  = rWorkspace;
     }
     
-    public void applySubnode( Node jcrNode, String nodeName, Object destination ) {
+    public <R> R applySubnode( Node jcrNode, String nodeName, R destination ) {
       try {
         if( jcrNode.hasNode( nodeName ) ) {
-          apply( jcrNode.getNode( nodeName ), destination );
+          destination = apply( jcrNode.getNode( nodeName ), destination );
         }
+        return destination;
       } catch( Exception ex ) {
         throw JcxException.wrap( ex );
       }
     }
   
-    public void apply( Node jcrNode, Object destination ) {
+    public <R> R apply( Node jcrNode, R destination ) {
       try {
         descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
         Node refNode = getRefNode( jcrNode );
@@ -378,6 +384,11 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
           descriptions.forEach( $ -> apply( refNode, destination, $ ) );
         }
         postprocess.accept( destination );
+        R result = destination;
+        if( (result instanceof IContent) && (! ((IContent) result).hasContent()) ) {
+          result = null;
+        }
+        return result;
       } catch( Exception ex ) {
         throw JcxException.wrap( ex );
       }
@@ -400,7 +411,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
     public <R> R create( Node jcrNode ) {
       R result = (R) supplier.get();
       if( result != null ) {
-        apply( jcrNode, result );
+        result = apply( jcrNode, result );
       }
       return result;
     }
