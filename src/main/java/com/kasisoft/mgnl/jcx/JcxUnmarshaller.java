@@ -106,6 +106,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
   }
 
   private TypeUnmarshaller getUnmarshaller( Class<?> type ) {
+    unmarshallers.clear();
     TypeUnmarshaller result = unmarshallers.get( type );
     if( result == null ) {
       result = buildUnmarshaller( type );
@@ -133,10 +134,15 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
       
       for( PropertyDescription property : properties ) {
         if( isAttribute( property ) ) {
-          if( property.getXmlAdapter() != null ) {
-            property.setLoader( getXmlAdapterLoader( property.getXmlAdapter() ) );
+          if( property.getCollectionType() != null ) {
+            // TODO: support XmlAdapter
+            property.setLoader( ($1, $2) -> getAttributes( $1, $2, property.getSubProperty(), property.getType() ) );
           } else {
-            property.setLoader( getAttributeLoader( property.getType() ) );
+            if( property.getXmlAdapter() != null ) {
+              property.setLoader( getXmlAdapterLoader( property.getXmlAdapter() ) );
+            } else {
+              property.setLoader( getAttributeLoader( property.getType() ) );
+            }
           }
         } else if( property.getCollectionType() != null ) {
           property.setLoader( ($1, $2) -> getElements( $1, $2, property.getSubProperty(), property.getType() ) );
@@ -181,6 +187,22 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
     return result;
   }
 
+  private <R> List<R> getAttributes( Node node, String nodeName, String subProperty, Class<R> type ) {
+    List<Node> nodes  = getAttributeNodes( node, nodeName );
+    List<R>    result = Collections.emptyList();
+    if( ! nodes.isEmpty() ) {
+      BiFunction<Node, String, R> subloader = getAttributeLoader( type );
+      result = new ArrayList<>();
+      for( Node childNode : nodes ) {
+        R obj = subloader.apply( childNode, subProperty );
+        if( obj != null ) {
+          result.add( obj );
+        }
+      }
+    }
+    return result;
+  }
+
   private <R> R getElement( Node node, String nodeName, Class<R> type ) {
     R    result   = null;
     Node dataNode = getNode( node, nodeName );
@@ -214,6 +236,20 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
             result.add( child );
           }
         }
+      }
+    } catch( Exception ex ) {
+      throw JcxException.wrap( ex );
+    }
+    return result;
+  }
+
+  private List<Node> getAttributeNodes( Node node, String nodeName ) {
+    List<Node> result = Collections.emptyList();
+    try {
+      result                = new ArrayList<>();
+      NodeIterator iterator = node.getNodes( String.format( "%s*", nodeName ) );
+      while( iterator.hasNext() ) {
+        result.add( iterator.nextNode() );
       }
     } catch( Exception ex ) {
       throw JcxException.wrap( ex );
