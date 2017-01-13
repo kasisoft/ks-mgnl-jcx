@@ -243,7 +243,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
   
   private boolean hasGenericsType( PropertyDescription description ) {
     boolean result = description.getCollectionType() == null || description.getType() != null;
-    if( ! result ) {
+    if( (! result) && isNotTransient( description ) ) {
       log.warn( "{}.{} - missing GenericsType annotation", description.getOwningType().getName(), description.getPropertyName() ); 
     }
     return result;
