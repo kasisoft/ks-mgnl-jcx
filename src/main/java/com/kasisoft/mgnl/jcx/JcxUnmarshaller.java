@@ -106,7 +106,6 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
   }
 
   private TypeUnmarshaller getUnmarshaller( Class<?> type ) {
-    unmarshallers.clear();
     TypeUnmarshaller result = unmarshallers.get( type );
     if( result == null ) {
       result = buildUnmarshaller( type );
