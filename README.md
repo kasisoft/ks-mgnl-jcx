@@ -40,8 +40,8 @@ Maven
      
      <repositories>
          <repository>
-             <id>kasisoft</id>
-             <url>https://kasisoft.com/artifactory/remote-repos</url>
+             <id>libs-kasisoft</id>
+             <url>https://kasisoft.com/artifactory/libs-kasisoft</url>
              <releases>
                  <enabled>true</enabled>
              </releases>
