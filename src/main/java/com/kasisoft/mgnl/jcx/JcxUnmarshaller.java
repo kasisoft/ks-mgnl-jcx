@@ -413,6 +413,7 @@ public class JcxUnmarshaller extends AbstractJcrUnmarshaller {
   
     public <R> R apply( Node jcrNode, R destination ) {
       try {
+        log.debug( "Applying to '{}'", destination );
         descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
         Node refNode = getRefNode( jcrNode );
         if( refNode != null ) {
