@@ -85,6 +85,12 @@
       </dependency>
       
       <dependency>
+        <groupId>com.google.code.findbugs</groupId>
+        <artifactId>annotations</artifactId>
+        <version>${version-findbugs-annotations}</version>
+      </dependency>
+      
+      <dependency>
         <groupId>javax.inject</groupId>
         <artifactId>javax.inject</artifactId>
         <version>${version-javax-inject}</version>
@@ -137,6 +143,11 @@
     <dependency>
       <groupId>info.magnolia</groupId>
       <artifactId>magnolia-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>annotations</artifactId>
     </dependency>
 
     <dependency>
