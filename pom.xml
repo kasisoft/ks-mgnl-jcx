@@ -59,7 +59,8 @@
     <version-hamcrest>1.3</version-hamcrest>
     <version-javax-inject>1</version-javax-inject>
     <version-kcl>2.6</version-kcl>
-    <version-magnolia-deps>5.4.9-SNAPSHOT</version-magnolia-deps>
+    <version-mgnl-deps>5.4.9-SNAPSHOT</version-mgnl-deps>
+    <version-mgnl-util>0.1-SNAPSHOT</version-mgnl-util>
     <version-mgnl-versionhandler>0.1-SNAPSHOT</version-mgnl-versionhandler>
     <version-testng>6.9.4</version-testng>
     
@@ -78,7 +79,7 @@
       <dependency>
         <groupId>com.kasisoft.mgnl</groupId>
         <artifactId>com.kasisoft.mgnl.dependencies</artifactId>
-        <version>${version-magnolia-deps}</version>
+        <version>${version-mgnl-deps}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -99,6 +100,12 @@
         <groupId>com.kasisoft.mgnl</groupId>
         <artifactId>com.kasisoft.mgnl.versionhandler</artifactId>
         <version>${version-mgnl-versionhandler}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.kasisoft.mgnl</groupId>
+        <artifactId>com.kasisoft.mgnl.util</artifactId>
+        <version>${version-mgnl-util}</version>
       </dependency>
       
       <dependency>
@@ -155,6 +162,11 @@
     <dependency>
       <groupId>com.kasisoft.mgnl</groupId>
       <artifactId>com.kasisoft.mgnl.versionhandler</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.kasisoft.mgnl</groupId>
+      <artifactId>com.kasisoft.mgnl.util</artifactId>
     </dependency>
 
     <dependency>
