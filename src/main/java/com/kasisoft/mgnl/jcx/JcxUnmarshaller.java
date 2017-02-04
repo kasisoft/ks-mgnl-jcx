@@ -1,6 +1,7 @@
 package com.kasisoft.mgnl.jcx;
 
 import info.magnolia.objectfactory.*;
+import info.magnolia.objectfactory.guice.*;
 
 import info.magnolia.jcr.util.*;
 
@@ -168,6 +169,17 @@ public class JcxUnmarshaller {
     return getUnmarshaller( type )::create;
   }
 
+  /**
+   * Like {@link #create(Class)} with the difference that the resulting object will be created, too.
+   * 
+   * @param type   The type of data that is supposed to be created.
+   * 
+   * @return   The creation function. Not <code>null</code>.
+   */
+  public synchronized <T> BiFunction<Node, String, T> createSubnodeCreator( @Nonnull Class<T> type ) {
+    return getUnmarshaller( type )::createSubnode;
+  }
+
   private Object create( Node dataNode, Class<?> clazz ) {
     return createCreator( clazz ).apply( dataNode ); 
   }
@@ -230,7 +242,9 @@ public class JcxUnmarshaller {
         refworkspace = jcxReference.value();
       }
       
-      return new TypeUnmarshaller( properties, () -> Components.newInstance( type ), postprocess, refworkspace, refproperty );
+      Supplier supplier = () -> Components.getComponentProvider().newInstanceWithParameterResolvers( type, new GuiceParameterResolver( (GuiceComponentProvider) Components.getComponentProvider() ) );
+      
+      return new TypeUnmarshaller( properties, supplier, postprocess, refworkspace, refproperty );
       
     } catch( Exception ex ) {
       log.error( "Failed to create jcx unmarshaller for type '{}'. Cause: {}", type.getName(), ex.getLocalizedMessage(), ex );
@@ -481,6 +495,7 @@ public class JcxUnmarshaller {
     public <R> R apply( Node jcrNode, R destination ) {
       try {
         log.debug( "Applying to '{}'", destination );
+        // inject:
         descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
         Node refNode = getRefNode( jcrNode );
         if( refNode != null ) {
@@ -517,6 +532,18 @@ public class JcxUnmarshaller {
         result = apply( jcrNode, result );
       }
       return result;
+    }
+    
+    public <R> R createSubnode( Node jcrNode, String nodeName ) {
+      try {
+        R result = (R) supplier.get();
+        if( jcrNode.hasNode( nodeName ) ) {
+          result = apply( jcrNode.getNode( nodeName ), result );
+        }
+        return result;
+      } catch( Exception ex ) {
+        throw JcxException.wrap( ex );
+      }
     }
     
     private void apply( Node jcrNode, Object destination, PropertyDescription desc ) {
