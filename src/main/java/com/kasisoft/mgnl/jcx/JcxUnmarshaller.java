@@ -242,14 +242,24 @@ public class JcxUnmarshaller {
         refworkspace = jcxReference.value();
       }
       
-      Supplier supplier = () -> Components.getComponentProvider().newInstanceWithParameterResolvers( type, new GuiceParameterResolver( (GuiceComponentProvider) Components.getComponentProvider() ) );
-      
-      return new TypeUnmarshaller( properties, supplier, postprocess, refworkspace, refproperty );
+      return new TypeUnmarshaller( properties, newSupplier( type ), postprocess, refworkspace, refproperty );
       
     } catch( Exception ex ) {
       log.error( "Failed to create jcx unmarshaller for type '{}'. Cause: {}", type.getName(), ex.getLocalizedMessage(), ex );
       throw JcxException.wrap( ex );
     }
+  }
+  
+  private Supplier newSupplier( Class<?> type ) {
+    Supplier          result            = null;
+    ComponentProvider componentProvider = Components.getComponentProvider();
+    if( componentProvider instanceof GuiceComponentProvider ) {
+      result = () -> componentProvider.newInstanceWithParameterResolvers( type, new GuiceParameterResolver( (GuiceComponentProvider) componentProvider ) );
+    } else {
+      log.warn( "ComponentProvider '{}' in use (injection probably not working)", type.getName() );
+      result = () -> componentProvider.newInstance( type );
+    }
+    return result;
   }
   
   private <R> List<R> getElements( Node node, String nodeName, String subProperty, Class<R> type ) {
