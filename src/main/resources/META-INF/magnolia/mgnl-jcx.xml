@@ -5,7 +5,6 @@
   <name>mgnl-jcx</name>
   <displayName>Jcx</displayName>
   <description>Jcx</description>
-  <versionHandler>com.kasisoft.mgnl.jcx.internal.JcxVersionHandler</versionHandler>
   <version>${project.version}</version>
   
   <components>

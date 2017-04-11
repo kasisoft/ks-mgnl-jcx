@@ -1,17 +1,11 @@
 package com.kasisoft.mgnl.jcx;
 
-import info.magnolia.objectfactory.*;
-import info.magnolia.objectfactory.guice.*;
-
-import info.magnolia.jcr.util.*;
-
 import com.kasisoft.libs.common.text.*;
 
 import com.kasisoft.libs.common.annotation.*;
 import com.kasisoft.libs.common.function.*;
+import com.kasisoft.mgnl.jcx.internal.*;
 import com.kasisoft.mgnl.util.*;
-
-import org.slf4j.*;
 
 import javax.annotation.*;
 import javax.inject.*;
@@ -28,16 +22,35 @@ import java.util.stream.*;
 
 import java.util.*;
 
+import lombok.extern.slf4j.*;
+
+import lombok.experimental.*;
+
+import lombok.*;
+
+import info.magnolia.objectfactory.*;
+import info.magnolia.objectfactory.guice.*;
+
 /**
  * This helper allows to mark attributes using jaxb annotations in order to fill them automatically. 
+ * There are three types of property values that can be loaded:
+ * 
+ *  <ol>
+ *    <li>ordinary attributes such as strings, integers, booleans etc. these are loaded through the attribute loaders.</li>
+ *    <li>XmlAdapter annotated values. the value will be loaded as a string and then converted using the XmlAdapter.</li>
+ *    <li>complex types which will be created with the help of {@link TypeUnmarshaller} which is responsible to
+ *    process the complete structure.</li>
+ *  </ol>
+ * 
+ * NOTE: be aware that not all java xml annotations are supported as this is more or less an ad-hoc development.
  * 
  * @author daniel.kasmeroglu@kasisoft.net
  */
+@Slf4j
+@FieldDefaults(level = AccessLevel.PRIVATE)
 @Singleton
 public class JcxUnmarshaller {
 
-  private static final Logger log = LoggerFactory.getLogger( JcxUnmarshaller.class );
-  
   public  static final String NAME_DIRECT   = "##direct";
   private static final String NAME_DEFAULT  = "##default";
   
@@ -48,16 +61,16 @@ public class JcxUnmarshaller {
 
   private static final Consumer<Object> DO_NOTHING = $ -> {};
   
-  private Function<String, String>                                        fieldNameGenerator;
-  private Map<Class<?>, TypeUnmarshaller>                                 unmarshallers;
-  private Map<Class<?>, BiFunction<Node, String, ?>>                      attributeLoaders;
-  private Map<Class<? extends XmlAdapter>, BiFunction<Node, String, ?>>   xmlAdapterLoaders;
+  Function<String, String>                                        fieldNameGenerator;
+  Map<Class<?>, TypeUnmarshaller>                                 unmarshallers;
+  Map<Class<?>, BiFunction<Node, String, ?>>                      attributeLoaders;
+  Map<Class<? extends XmlAdapter>, BiFunction<Node, String, ?>>   xmlAdapterLoaders;
 
   public JcxUnmarshaller() {
     fieldNameGenerator  = Function.identity();
     unmarshallers       = new HashMap<>();
-    attributeLoaders    = setupAttributeLoaders();
     xmlAdapterLoaders   = new HashMap<>();
+    attributeLoaders    = setupAttributeLoaders();
   }
   
   protected <R> BiFunction<Node, String, R> getXmlAdapterLoader( @Nonnull Class<? extends XmlAdapter> xmlAdapter ) {
@@ -85,7 +98,7 @@ public class JcxUnmarshaller {
     }
   }
   
-  protected <R> BiFunction<Node, String, R> getAttributeLoader( @Nonnull Class<R> type ) {
+  protected synchronized <R> BiFunction<Node, String, R> getAttributeLoader( @Nonnull Class<R> type ) {
     return (BiFunction<Node, String, R>) attributeLoaders.get( type );
   }
   
@@ -98,6 +111,7 @@ public class JcxUnmarshaller {
   }
 
   private Map<Class<?>, BiFunction<Node, String, ?>> setupAttributeLoaders() {
+    
     Map<Class<?>, BiFunction<Node, String, ?>> result = new HashMap<>();
     
     result.put( Boolean   . TYPE , (n, p) -> PropertyLoaders.toBoolean    ( n, p, false     ) );
@@ -120,6 +134,7 @@ public class JcxUnmarshaller {
     result.put( String    . class, PropertyLoaders::toString     );
     
     return result;
+    
   }
   
   /**
@@ -130,7 +145,7 @@ public class JcxUnmarshaller {
    * @param nameGen   The new name generation function to be used.
    *                  <code>null</code> <=> The identify function is being used.
    */
-  public void setFieldNameGenerator( Function<String, String> nameGen ) {
+  public synchronized void setFieldNameGenerator( @Nullable Function<String, String> nameGen ) {
     fieldNameGenerator = nameGen != null ? nameGen : Function.identity();
   }
 
@@ -184,8 +199,8 @@ public class JcxUnmarshaller {
     return createCreator( clazz ).apply( dataNode ); 
   }
 
-  private TypeUnmarshaller getUnmarshaller( Class<?> type ) {
-    TypeUnmarshaller result = unmarshallers.get( type );
+  private <T> TypeUnmarshaller<T> getUnmarshaller( Class<T> type ) {
+    TypeUnmarshaller<T> result = unmarshallers.get( type );
     if( result == null ) {
       result = buildUnmarshaller( type );
       unmarshallers.put( type, result );
@@ -475,98 +490,4 @@ public class JcxUnmarshaller {
     return result;
   }
 
-  private static class TypeUnmarshaller {
-
-    private List<PropertyDescription>   descriptions;
-    private Supplier<?>                 supplier;
-    private Consumer<Object>            postprocess;
-    private String                      refProperty;
-    private String                      refWorkspace;
-    
-    public TypeUnmarshaller( List<PropertyDescription> descs, Supplier<?> sup, Consumer<Object> post, String rWorkspace, String rProperty ) {
-      descriptions  = descs;
-      supplier      = sup;
-      postprocess   = post;
-      refProperty   = rProperty;
-      refWorkspace  = rWorkspace;
-    }
-    
-    public <R> R applySubnode( Node jcrNode, String nodeName, R destination ) {
-      try {
-        if( jcrNode.hasNode( nodeName ) ) {
-          destination = apply( jcrNode.getNode( nodeName ), destination );
-        }
-        return destination;
-      } catch( Exception ex ) {
-        throw JcxException.wrap( ex );
-      }
-    }
-  
-    public <R> R apply( Node jcrNode, R destination ) {
-      try {
-        log.debug( "Applying to '{}'", destination );
-        // inject:
-        descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
-        Node refNode = getRefNode( jcrNode );
-        if( refNode != null ) {
-          descriptions.forEach( $ -> apply( refNode, destination, $ ) );
-        }
-        postprocess.accept( destination );
-        R result = destination;
-        if( (result instanceof IContent) && (! ((IContent) result).hasContent()) ) {
-          result = null;
-        }
-        return result;
-      } catch( Exception ex ) {
-        throw JcxException.wrap( ex );
-      }
-    }
-    
-    private Node getRefNode( Node jcrNode ) {
-      Node result = null;
-      if( refWorkspace != null ) {
-        String uuid = StringFunctions.cleanup( PropertyUtil.getString( jcrNode, refProperty ) );
-        if( uuid != null ) {
-          uuid = StringFunctions.cleanup( StringFunctions.trim( uuid, "[]{} \t", null ) );
-        }
-        if( uuid != null ) {
-          result = SessionUtil.getNodeByIdentifier( refWorkspace, uuid );
-        }
-      }
-      return result;
-    }
-    
-    public <R> R create( Node jcrNode ) {
-      R result = (R) supplier.get();
-      if( result != null ) {
-        result = apply( jcrNode, result );
-      }
-      return result;
-    }
-    
-    public <R> R createSubnode( Node jcrNode, String nodeName ) {
-      try {
-        R result = (R) supplier.get();
-        if( jcrNode.hasNode( nodeName ) ) {
-          result = apply( jcrNode.getNode( nodeName ), result );
-        }
-        return result;
-      } catch( Exception ex ) {
-        throw JcxException.wrap( ex );
-      }
-    }
-    
-    private void apply( Node jcrNode, Object destination, PropertyDescription desc ) {
-      Object value = desc.getLoader().apply( jcrNode, desc.getPropertyName() );
-      if( value != null ) {
-        try {
-          desc.getSetter().invoke( destination, value );
-        } catch( Exception ex ) {
-          throw JcxException.wrap( ex );
-        }
-      }
-    }
-    
-  } /* ENDCLASS */
-  
 } /* ENDCLASS */
