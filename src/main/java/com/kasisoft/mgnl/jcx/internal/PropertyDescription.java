@@ -16,7 +16,7 @@ import lombok.*;
  * 
  * @author daniel.kasmeroglu@kasisoft.net
  */
-@Data
+@Getter @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public final class PropertyDescription {
 
