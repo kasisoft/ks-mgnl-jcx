@@ -18,4 +18,6 @@ public @interface JcxReference {
   
   String property() default "target";
   
+  boolean before() default true;
+  
 } /* ENDANNOTATION */

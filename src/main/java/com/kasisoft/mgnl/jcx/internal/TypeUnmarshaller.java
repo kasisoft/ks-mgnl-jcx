@@ -48,6 +48,9 @@ public class TypeUnmarshaller<R> {
   // the property which is used to establish a reference
   String                      refProperty;
   
+  // decide whether the referred property will be processed before or after the current node
+  boolean                     before;
+  
   /**
    * Creates a new instance which properties will be set to the values provided with the supplied node.
    * 
@@ -101,13 +104,18 @@ public class TypeUnmarshaller<R> {
       
       log.trace( msg_applying_node_to_destination.format( NodeFunctions.getPath( jcrNode ), destination ) );
       
+      Node refNode = getRefNode( jcrNode );
+      
+      if( (refNode != null) && before ) {
+        // if there's a reference we're using the target as an additional source
+        descriptions.forEach( $ -> apply( refNode, destination, $ ) );
+      }
+      
       // apply the values for each property first
       descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
       
-      /** @todo [12-Apr-2017:KASI]   make it configurable whether this should be executed before or afterwards */
-      // if there's a reference we're using the target as an additional source
-      Node refNode = getRefNode( jcrNode );
-      if( refNode != null ) {
+      if( (refNode != null) && (! before) ) {
+        // if there's a reference we're using the target as an additional source
         descriptions.forEach( $ -> apply( refNode, destination, $ ) );
       }
 

@@ -27,7 +27,7 @@ public final class PropertyDescription {
   String                                    propertyName;
   
   // if set, the element is organized below propertyName
-  String                                    subProperty;
+  // String                                    subProperty;
   
   // the reflection field for the property
   Field                                     field;

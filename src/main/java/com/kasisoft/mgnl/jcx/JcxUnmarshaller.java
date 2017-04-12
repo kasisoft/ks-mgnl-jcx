@@ -1,5 +1,7 @@
 package com.kasisoft.mgnl.jcx;
 
+import static com.kasisoft.mgnl.jcx.internal.Messages.*;
+
 import com.kasisoft.libs.common.text.*;
 
 import com.kasisoft.libs.common.annotation.*;
@@ -54,11 +56,6 @@ public class JcxUnmarshaller {
   public  static final String NAME_DIRECT   = "##direct";
   private static final String NAME_DEFAULT  = "##default";
   
-  private static final Set<String> IGNORABLES = new HashSet<>( Arrays.asList(
-    "log", "contentMap", "unmarshaller", "content", "definition", "parentModel", "loader", "cmsfn", "imgfn",
-    "damfn"
-  ) );
-
   private static final Consumer<Object> DO_NOTHING = $ -> {};
   
   Function<String, String>                                        fieldNameGenerator;
@@ -73,16 +70,20 @@ public class JcxUnmarshaller {
     attributeLoaders    = setupAttributeLoaders();
   }
   
+  protected <R> XmlAdapter<String, R> newXmlAdapter( Class<? extends XmlAdapter> xmlAdapterType ) {
+    XmlAdapter<String, R> result = null;
+    try {
+      result = Components.getComponent( xmlAdapterType );
+    } catch( Exception ex ) {
+      result = Components.newInstance( xmlAdapterType );
+    }
+    return result;
+  }
+  
   protected <R> BiFunction<Node, String, R> getXmlAdapterLoader( @Nonnull Class<? extends XmlAdapter> xmlAdapter ) {
     BiFunction<Node, String, R> result = (BiFunction<Node, String, R>) xmlAdapterLoaders.get( xmlAdapter );
     if( result == null ) {
-      XmlAdapter<String, R> adapter = null;
-      try {
-        adapter = Components.getComponent( xmlAdapter );
-      } catch( Exception ex ) {
-        adapter = Components.newInstance( xmlAdapter );
-      }
-      final XmlAdapter<String, R> xml = adapter;
+      XmlAdapter<String, R> xml = newXmlAdapter( xmlAdapter );
       result = ($1, $2) -> exceptionWrapper( xml, $1, $2 );
       xmlAdapterLoaders.put( xmlAdapter, result );
     }
@@ -114,24 +115,24 @@ public class JcxUnmarshaller {
     
     Map<Class<?>, BiFunction<Node, String, ?>> result = new HashMap<>();
     
-    result.put( Boolean   . TYPE , (n, p) -> PropertyLoaders.toBoolean    ( n, p, false     ) );
-    result.put( Character . TYPE , (n, p) -> PropertyLoaders.toCharacter  ( n, p, '\0'      ) );
-    result.put( Byte      . TYPE , (n, p) -> PropertyLoaders.toByte       ( n, p, (byte) 0  ) );
-    result.put( Short     . TYPE , (n, p) -> PropertyLoaders.toShort      ( n, p, (short) 0 ) );
-    result.put( Integer   . TYPE , (n, p) -> PropertyLoaders.toInteger    ( n, p, 0         ) );
-    result.put( Long      . TYPE , (n, p) -> PropertyLoaders.toLong       ( n, p, 0L        ) );
-    result.put( Float     . TYPE , (n, p) -> PropertyLoaders.toFloat      ( n, p, 0         ) );
-    result.put( Double    . TYPE , (n, p) -> PropertyLoaders.toDouble     ( n, p, 0.0       ) );
-    
-    result.put( Boolean   . class, PropertyLoaders::toBoolean    );
-    result.put( Character . class, PropertyLoaders::toCharacter  );
-    result.put( Byte      . class, PropertyLoaders::toByte       );
-    result.put( Short     . class, PropertyLoaders::toShort      );
-    result.put( Integer   . class, PropertyLoaders::toInteger    );
-    result.put( Long      . class, PropertyLoaders::toLong       );
-    result.put( Float     . class, PropertyLoaders::toFloat      );
-    result.put( Double    . class, PropertyLoaders::toDouble     );
-    result.put( String    . class, PropertyLoaders::toString     );
+    result.put( Boolean   . TYPE , PropertyLoaders::toBoolean     );
+    result.put( Character . TYPE , PropertyLoaders::toCharacter   );
+    result.put( Byte      . TYPE , PropertyLoaders::toByte        );
+    result.put( Short     . TYPE , PropertyLoaders::toShort       );
+    result.put( Integer   . TYPE , PropertyLoaders::toInteger     );
+    result.put( Long      . TYPE , PropertyLoaders::toLong        );
+    result.put( Float     . TYPE , PropertyLoaders::toFloat       );
+    result.put( Double    . TYPE , PropertyLoaders::toDouble      );
+
+    result.put( Boolean   . class, PropertyLoaders::toBoolean     );
+    result.put( Character . class, PropertyLoaders::toCharacter   );
+    result.put( Byte      . class, PropertyLoaders::toByte        );
+    result.put( Short     . class, PropertyLoaders::toShort       );
+    result.put( Integer   . class, PropertyLoaders::toInteger     );
+    result.put( Long      . class, PropertyLoaders::toLong        );
+    result.put( Float     . class, PropertyLoaders::toFloat       );
+    result.put( Double    . class, PropertyLoaders::toDouble      );
+    result.put( String    . class, PropertyLoaders::toString      );
     
     return result;
     
@@ -228,8 +229,11 @@ public class JcxUnmarshaller {
       for( PropertyDescription property : properties ) {
         if( isAttribute( property ) ) {
           if( property.getCollectionType() != null ) {
-            // TODO: support XmlAdapter
-            property.setLoader( ($1, $2) -> getAttributes( $1, $2, property.getSubProperty(), property.getType() ) );
+            if( property.getXmlAdapter() != null ) {
+              property.setLoader( ($1, $2) -> getAttributesUsingXmlAdapter( $1, $2, property.getType(), property.getXmlAdapter() ) );
+            } else {
+              property.setLoader( ($1, $2) -> getAttributes( $1, $2, property.getType() ) );
+            }
           } else {
             if( property.getXmlAdapter() != null ) {
               property.setLoader( getXmlAdapterLoader( property.getXmlAdapter() ) );
@@ -238,7 +242,7 @@ public class JcxUnmarshaller {
             }
           }
         } else if( property.getCollectionType() != null ) {
-          property.setLoader( ($1, $2) -> getElements( $1, $2, property.getSubProperty(), property.getType() ) );
+          property.setLoader( ($1, $2) -> getElements( $1, $2, /* property.getSubProperty(),*/ property.getType() ) );
         } else {
           property.setLoader( ($1, $2) -> getElement( $1, $2, property.getType() ) );
         }
@@ -251,16 +255,18 @@ public class JcxUnmarshaller {
       
       String       refproperty  = null;
       String       refworkspace = null;
+      boolean      before       = true;
       JcxReference jcxReference = type.getAnnotation( JcxReference.class );
       if( jcxReference != null ) {
         refproperty  = jcxReference.property();
         refworkspace = jcxReference.value();
+        before       = jcxReference.before();
       }
       
-      return new TypeUnmarshaller( properties, newSupplier( type ), postprocess, refworkspace, refproperty );
+      return new TypeUnmarshaller( properties, newSupplier( type ), postprocess, refworkspace, refproperty, before );
       
     } catch( Exception ex ) {
-      log.error( "Failed to create jcx unmarshaller for type '{}'. Cause: {}", type.getName(), ex.getLocalizedMessage(), ex );
+      log.error( msg_failed_to_create_unmarshaller.format( type.getName(), ex.getLocalizedMessage() ), ex );
       throw JcxException.wrap( ex );
     }
   }
@@ -271,14 +277,14 @@ public class JcxUnmarshaller {
     if( componentProvider instanceof GuiceComponentProvider ) {
       result = () -> componentProvider.newInstanceWithParameterResolvers( type, new GuiceParameterResolver( (GuiceComponentProvider) componentProvider ) );
     } else {
-      log.warn( "ComponentProvider '{}' in use (injection probably not working)", type.getName() );
+      log.warn( msg_non_guice_component_provider.format( type.getName() ) );
       result = () -> componentProvider.newInstance( type );
     }
     return result;
   }
   
-  private <R> List<R> getElements( Node node, String nodeName, String subProperty, Class<R> type ) {
-    List<Node> nodes  = getNodes( node, nodeName, subProperty );
+  private <R> List<R> getElements( Node node, String nodeName, /* String subProperty, */ Class<R> type ) {
+    List<Node> nodes  = getNodes( node, nodeName /*, subProperty */ );
     List<R>    result = Collections.emptyList();
     if( ! nodes.isEmpty() ) {
       result = new ArrayList<>();
@@ -291,21 +297,47 @@ public class JcxUnmarshaller {
     }
     return result;
   }
-
-  private <R> List<R> getAttributes( Node node, String nodeName, String subProperty, Class<R> type ) {
-    List<Node> nodes  = getAttributeNodes( node, nodeName );
-    List<R>    result = Collections.emptyList();
-    if( ! nodes.isEmpty() ) {
-      BiFunction<Node, String, R> subloader = getAttributeLoader( type );
-      result = new ArrayList<>();
-      for( Node childNode : nodes ) {
-        R obj = subloader.apply( childNode, subProperty );
-        if( obj != null ) {
-          result.add( obj );
+  
+  private <R> List<R> getAttributesUsingXmlAdapter( Node node, String nodeName, Class<R> type, Class<? extends XmlAdapter> xmlAdapterType ) {
+    try {
+      List<R>      result    = Collections.emptyList();
+      List<String> strValues = getAttributes( node, nodeName, String.class );
+      if( ! strValues.isEmpty() ) {
+        XmlAdapter<String, R> adapter = newXmlAdapter( xmlAdapterType );
+        result = new ArrayList<>( strValues.size() );
+        for( String str : strValues ) {
+          result.add( adapter.unmarshal( str ) );
         }
       }
+      return result;
+    } catch( Exception ex ) {
+      throw JcxException.wrap( ex );
     }
-    return result;
+  }
+
+  private <R> List<R> getAttributes( Node node, String nodeName, Class<R> type ) { 
+    try {
+      List<R> result = Collections.emptyList();
+      if( node.hasNode( nodeName ) ) {
+        Node                        container = node.getNode( nodeName );
+        PropertyIterator            iterator  = container.getProperties();
+        List<String>                names     = new ArrayList<>();
+        while( iterator.hasNext() ) {
+          Property property = iterator.nextProperty();
+          names.add( property.getName() );
+        }
+        if( ! names.isEmpty() ) {
+          BiFunction<Node, String, R> subloader = getAttributeLoader( type );
+          result = new ArrayList<>( names.size() );
+          for( String name : names ) {
+            result.add( subloader.apply( container, name ) );
+          }
+        }
+      }
+      return result;
+    } catch( RepositoryException ex ) {
+      throw JcxException.wrap( ex );
+    }
   }
 
   private <R> R getElement( Node node, String nodeName, Class<R> type ) {
@@ -317,10 +349,10 @@ public class JcxUnmarshaller {
     return result;
   }
 
-  private List<Node> getNodes( Node node, String nodeName, String subProperty ) {
+  private List<Node> getNodes( Node node, String nodeName /*, String subProperty */ ) {
     List<Node> result = Collections.emptyList();
     try {
-      if( subProperty == null ) {
+      // if( subProperty == null ) {
         if( node.hasNode( nodeName ) ) {
           // children are organized directly below the named node
           result                = new ArrayList<>();
@@ -330,6 +362,7 @@ public class JcxUnmarshaller {
             result.add( iterator.nextNode() );
           }
         }
+        /*
       } else {
         // multivalue based persistence (multivalue/delegation)
         result                = new ArrayList<>();
@@ -342,25 +375,26 @@ public class JcxUnmarshaller {
           }
         }
       }
+      */
     } catch( Exception ex ) {
       throw JcxException.wrap( ex );
     }
     return result;
   }
 
-  private List<Node> getAttributeNodes( Node node, String nodeName ) {
-    List<Node> result = Collections.emptyList();
-    try {
-      result                = new ArrayList<>();
-      NodeIterator iterator = node.getNodes( String.format( "%s*", nodeName ) );
-      while( iterator.hasNext() ) {
-        result.add( iterator.nextNode() );
-      }
-    } catch( Exception ex ) {
-      throw JcxException.wrap( ex );
-    }
-    return result;
-  }
+//  private List<Node> getAttributeNodes( Node node, String nodeName ) {
+//    List<Node> result = Collections.emptyList();
+//    try {
+//      result                = new ArrayList<>();
+//      NodeIterator iterator = node.getNodes( String.format( "%s*", nodeName ) );
+//      while( iterator.hasNext() ) {
+//        result.add( iterator.nextNode() );
+//      }
+//    } catch( Exception ex ) {
+//      throw JcxException.wrap( ex );
+//    }
+//    return result;
+//  }
 
   private Node getNode( Node node, String nodeName ) {
     Node result = null;
@@ -385,15 +419,15 @@ public class JcxUnmarshaller {
   private boolean hasGenericsType( PropertyDescription description ) {
     boolean result = description.getCollectionType() == null || description.getType() != null;
     if( (! result) && isNotTransient( description ) ) {
-      log.warn( "{}.{} - missing GenericsType annotation", description.getOwningType().getName(), description.getPropertyName() ); 
+      log.warn( msg_missing_generics_type.format( description.getOwningType().getName(), description.getPropertyName() ) ); 
     }
     return result;
   }
 
   private boolean hasSetter( PropertyDescription description ) {
     boolean result = description.getSetter() != null;
-    if( (! result) && (! IGNORABLES.contains( description.getPropertyName())) ) {
-      log.warn( "{}.{} - missing setter method", description.getOwningType().getName(), description.getPropertyName() ); 
+    if( ! result ) {
+      log.warn( msg_missing_setter_method.format( description.getOwningType().getName(), description.getPropertyName() ) ); 
     }
     return result;
   }
@@ -401,8 +435,8 @@ public class JcxUnmarshaller {
   private boolean isInteresting( PropertyDescription description ) {
     XmlAttribute      xmlAttr     = description.getField().getAnnotation( XmlAttribute.class );
     XmlElement        xmlElem     = description.getField().getAnnotation( XmlElement.class );
-    XmlElementWrapper xmlWrapper  = description.getField().getAnnotation( XmlElementWrapper.class );
-    return (xmlAttr != null) || (xmlElem != null) || (xmlWrapper != null);
+    // XmlElementWrapper xmlWrapper  = description.getField().getAnnotation( XmlElementWrapper.class );
+    return (xmlAttr != null) || (xmlElem != null) /* || (xmlWrapper != null) */;
   }
   
   private boolean isAttribute( PropertyDescription description ) {
@@ -435,18 +469,20 @@ public class JcxUnmarshaller {
   private void introspectField( Class<?> basetype, Class<?> type, Field field, Map<String, PropertyDescription> properties ) {
     String                name          = fieldNameGenerator.apply( field.getName() );
     String                propertyName  = getPropertyName( field, name );
-    String                subProperty   = null;
+    // String                subProperty   = null;
     XmlJavaTypeAdapter    xmlAdapter    = field.getAnnotation( XmlJavaTypeAdapter.class ); 
+    /*
     XmlElementWrapper     elemWrapper   = field.getAnnotation( XmlElementWrapper.class );
     if( elemWrapper != null ) {
       subProperty   = propertyName;
       propertyName  = elemWrapper.name();
     }
+    */
     PropertyDescription description   = new PropertyDescription();
     description.setXmlAdapter( xmlAdapter != null ? xmlAdapter.value() : null );
     description.setOwningType( basetype );
     description.setPropertyName( propertyName );
-    description.setSubProperty( subProperty );
+    // description.setSubProperty( subProperty );
     description.setField( field );
     if( Collection.class.isAssignableFrom( field.getType() ) ) {
       description.setCollectionType( field.getType() );
@@ -458,7 +494,7 @@ public class JcxUnmarshaller {
       description.setType( field.getType() );
     }
     try {
-      String setterName = String.format( "set%s", StringFunctions.firstUp( name ) );
+      String setterName = String.format( "set%s", StringFunctions.firstUp( field.getName() ) );
       description.setSetter( type.getDeclaredMethod( setterName, field.getType() ) );
     } catch( NoSuchMethodException | SecurityException ex ) {
       // will be reported later
