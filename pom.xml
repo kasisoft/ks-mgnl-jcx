@@ -55,8 +55,6 @@
     <version-servlet-api>3.0.1</version-servlet-api>
     <version-testng>6.9.4</version-testng>
     
-    <plugin-version-cobertura-maven>2.7</plugin-version-cobertura-maven>
-    
   </properties>
  
   <dependencyManagement>
@@ -134,13 +132,6 @@
         <groupId>org.testng</groupId>
         <artifactId>testng</artifactId>
         <version>${version-testng}</version>
-        <scope>test</scope>
-      </dependency>
-
-      <dependency>
-        <groupId>net.sourceforge.cobertura</groupId>
-        <artifactId>cobertura</artifactId>
-        <version>${version-cobertura}</version>
         <scope>test</scope>
       </dependency>
 
