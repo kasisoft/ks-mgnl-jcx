@@ -242,7 +242,7 @@ public class JcxUnmarshaller {
             }
           }
         } else if( property.getCollectionType() != null ) {
-          property.setLoader( ($1, $2) -> getElements( $1, $2, /* property.getSubProperty(),*/ property.getType() ) );
+          property.setLoader( ($1, $2) -> getElements( $1, $2, property.getSubProperty(), property.getType() ) );
         } else {
           property.setLoader( ($1, $2) -> getElement( $1, $2, property.getType() ) );
         }
@@ -283,17 +283,41 @@ public class JcxUnmarshaller {
     return result;
   }
   
-  private <R> List<R> getElements( Node node, String nodeName, /* String subProperty, */ Class<R> type ) {
-    List<Node> nodes  = getNodes( node, nodeName /*, subProperty */ );
-    List<R>    result = Collections.emptyList();
-    if( ! nodes.isEmpty() ) {
-      result = new ArrayList<>();
-      for( Node childNode : nodes ) {
-        Object obj = create( childNode, type );
-        if( obj != null ) {
-          result.add( (R) obj );
+  private <R> List<R> getElements( Node node, String nodeName, String subProperty, Class<R> type ) {
+    try {
+      List<R> result = Collections.emptyList();
+      if( subProperty != null ) {
+        if( node.hasNode( subProperty ) ) {
+          Node       containerNode = node.getNode( subProperty );
+          List<Node> nodes         = getNodes( containerNode );
+          if( ! nodes.isEmpty() ) {
+            Function<Node, R> creator = createCreator( type );
+            result                    = nodes.stream()
+              .map( creator::apply )
+              .collect( Collectors.toList() );
+            
+          }
+        }
+      } else {
+        List<String> names  = getNodeNames( node, nodeName );
+        if( ! names.isEmpty() ) {
+          BiFunction<Node, String, R> subloader = createSubnodeCreator( type );
+          result = names.stream()
+            .map( $ -> subloader.apply( node, $ ) )
+            .collect( Collectors.toList() );
         }
       }
+      return result;
+    } catch( Exception ex ) {
+      throw JcxException.wrap( ex );
+    }
+  }
+  
+  private List<Node> getNodes( Node parent ) throws RepositoryException {
+    List<Node>   result   = new ArrayList<>();
+    NodeIterator iterator = parent.getNodes();
+    while( iterator.hasNext() ) {
+      result.add( iterator.nextNode() );
     }
     return result;
   }
@@ -317,27 +341,44 @@ public class JcxUnmarshaller {
 
   private <R> List<R> getAttributes( Node node, String nodeName, Class<R> type ) { 
     try {
-      List<R> result = Collections.emptyList();
-      if( node.hasNode( nodeName ) ) {
-        Node                        container = node.getNode( nodeName );
-        PropertyIterator            iterator  = container.getProperties();
-        List<String>                names     = new ArrayList<>();
-        while( iterator.hasNext() ) {
-          Property property = iterator.nextProperty();
-          names.add( property.getName() );
-        }
-        if( ! names.isEmpty() ) {
-          BiFunction<Node, String, R> subloader = getAttributeLoader( type );
-          result = new ArrayList<>( names.size() );
-          for( String name : names ) {
-            result.add( subloader.apply( container, name ) );
-          }
-        }
+      List<R>      result = Collections.emptyList();
+      List<String> names  = getPropertyNames( node, nodeName );
+      if( ! names.isEmpty() ) {
+        BiFunction<Node, String, R> subloader = getAttributeLoader( type );
+        result = names.stream()
+          .map( $ -> subloader.apply( node, $ ) )
+          .collect( Collectors.toList() );
       }
       return result;
     } catch( RepositoryException ex ) {
       throw JcxException.wrap( ex );
     }
+  }
+  
+  private List<String> getPropertyNames( Node node, String nodeName ) throws RepositoryException {
+    List<String>     result   = Collections.emptyList();
+    PropertyIterator iterator = node.getProperties( nodeName + "*" );
+    if( iterator.hasNext() ) {
+      result = new ArrayList<>();
+      while( iterator.hasNext() ) {
+        result.add( iterator.nextProperty().getName() );
+      }
+      Collections.sort( result );
+    }
+    return result;
+  }
+
+  private List<String> getNodeNames( Node node, String nodeName ) throws RepositoryException {
+    List<String> result   = Collections.emptyList();
+    NodeIterator iterator = node.getNodes( nodeName + "*" );
+    if( iterator.hasNext() ) {
+      result = new ArrayList<>();
+      while( iterator.hasNext() ) {
+        result.add( iterator.nextNode().getName() );
+      }
+      Collections.sort( result );
+    }
+    return result;
   }
 
   private <R> R getElement( Node node, String nodeName, Class<R> type ) {
@@ -348,53 +389,6 @@ public class JcxUnmarshaller {
     }
     return result;
   }
-
-  private List<Node> getNodes( Node node, String nodeName /*, String subProperty */ ) {
-    List<Node> result = Collections.emptyList();
-    try {
-      // if( subProperty == null ) {
-        if( node.hasNode( nodeName ) ) {
-          // children are organized directly below the named node
-          result                = new ArrayList<>();
-          Node         dataNode = node.getNode( nodeName );
-          NodeIterator iterator = dataNode.getNodes();
-          while( iterator.hasNext() ) {
-            result.add( iterator.nextNode() );
-          }
-        }
-        /*
-      } else {
-        // multivalue based persistence (multivalue/delegation)
-        result                = new ArrayList<>();
-        NodeIterator iterator = node.getNodes( String.format( "%s*", nodeName ) );
-        while( iterator.hasNext() ) {
-          Node parent = iterator.nextNode();
-          Node child  = parent.getNode( subProperty );
-          if( child != null ) {
-            result.add( child );
-          }
-        }
-      }
-      */
-    } catch( Exception ex ) {
-      throw JcxException.wrap( ex );
-    }
-    return result;
-  }
-
-//  private List<Node> getAttributeNodes( Node node, String nodeName ) {
-//    List<Node> result = Collections.emptyList();
-//    try {
-//      result                = new ArrayList<>();
-//      NodeIterator iterator = node.getNodes( String.format( "%s*", nodeName ) );
-//      while( iterator.hasNext() ) {
-//        result.add( iterator.nextNode() );
-//      }
-//    } catch( Exception ex ) {
-//      throw JcxException.wrap( ex );
-//    }
-//    return result;
-//  }
 
   private Node getNode( Node node, String nodeName ) {
     Node result = null;
@@ -435,8 +429,8 @@ public class JcxUnmarshaller {
   private boolean isInteresting( PropertyDescription description ) {
     XmlAttribute      xmlAttr     = description.getField().getAnnotation( XmlAttribute.class );
     XmlElement        xmlElem     = description.getField().getAnnotation( XmlElement.class );
-    // XmlElementWrapper xmlWrapper  = description.getField().getAnnotation( XmlElementWrapper.class );
-    return (xmlAttr != null) || (xmlElem != null) /* || (xmlWrapper != null) */;
+    XmlElementWrapper xmlWrapper  = description.getField().getAnnotation( XmlElementWrapper.class );
+    return (xmlAttr != null) || (xmlElem != null) || (xmlWrapper != null);
   }
   
   private boolean isAttribute( PropertyDescription description ) {
@@ -469,20 +463,20 @@ public class JcxUnmarshaller {
   private void introspectField( Class<?> basetype, Class<?> type, Field field, Map<String, PropertyDescription> properties ) {
     String                name          = fieldNameGenerator.apply( field.getName() );
     String                propertyName  = getPropertyName( field, name );
-    // String                subProperty   = null;
+    String                subProperty   = null;
     XmlJavaTypeAdapter    xmlAdapter    = field.getAnnotation( XmlJavaTypeAdapter.class ); 
-    /*
     XmlElementWrapper     elemWrapper   = field.getAnnotation( XmlElementWrapper.class );
     if( elemWrapper != null ) {
-      subProperty   = propertyName;
-      propertyName  = elemWrapper.name();
+      subProperty = StringFunctions.cleanup( elemWrapper.name() );
+      if( subProperty == null ) {
+        subProperty = propertyName;
+      }
     }
-    */
     PropertyDescription description   = new PropertyDescription();
     description.setXmlAdapter( xmlAdapter != null ? xmlAdapter.value() : null );
     description.setOwningType( basetype );
     description.setPropertyName( propertyName );
-    // description.setSubProperty( subProperty );
+    description.setSubProperty( subProperty );
     description.setField( field );
     if( Collection.class.isAssignableFrom( field.getType() ) ) {
       description.setCollectionType( field.getType() );

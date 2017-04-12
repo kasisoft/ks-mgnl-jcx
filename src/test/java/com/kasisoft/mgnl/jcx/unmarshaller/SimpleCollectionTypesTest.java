@@ -34,11 +34,9 @@ public class SimpleCollectionTypesTest extends AbstractJcxUnmarshaller {
     
     TreeBuilder tb = new TreeBuilder()
       .sContentNode( "simpleCollectionTypes" )
-        .sContentNode( "strings" )
-          .property( "0" , "A" )
-          .property( "1" , "B" )
-          .property( "2" , "C" )
-        .sEnd()
+        .property( "strings0" , "A" )
+        .property( "strings1" , "B" )
+        .property( "strings2" , "C" )
       .sEnd();
     
     tb.build( new MockNodeProducer( biboSession ) );
@@ -59,11 +57,9 @@ public class SimpleCollectionTypesTest extends AbstractJcxUnmarshaller {
     
     TreeBuilder tb = new TreeBuilder()
       .sContentNode( "simpleCollectionTypesWithAdapter" )
-        .sContentNode( "colors" )
-          .property( "0" , "red" )
-          .property( "1" , "green" )
-          .property( "2" , "blue" )
-        .sEnd()
+        .property( "colors0" , "red"   )
+        .property( "colors1" , "green" )
+        .property( "colors2" , "blue"  )
       .sEnd();
     
     tb.build( new MockNodeProducer( biboSession ) );
