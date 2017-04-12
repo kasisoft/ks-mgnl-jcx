@@ -384,6 +384,16 @@
   
   <repositories>
     <repository>
+      <id>magnolia.public</id>
+      <url>https://nexus.magnolia-cms.com/content/groups/public</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+    <repository>
       <id>libs-kasisoft</id>
       <url>https://kasisoft.com/artifactory/libs-kasisoft</url>
       <releases>
