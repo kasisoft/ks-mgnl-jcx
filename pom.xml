@@ -6,12 +6,13 @@
   <parent>
     <groupId>com.kasisoft</groupId>
     <artifactId>com.kasisoft.libs.parent-oss</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.1</version>
   </parent>
   
   <packaging>jar</packaging>
   <groupId>com.kasisoft.mgnl</groupId>
   <artifactId>com.kasisoft.mgnl.jcx</artifactId>
+  <version>0.1-SNAPSHOT</version>
   <name>MGNL :: JCR Xml Binding</name>
   <url>https://kasisoft.com/bitbucket/projects/MGNL/repos/com.kasisoft.mgnl.jcx</url>
   <description>Support of JAXB annotations to access JCR data.</description>
