@@ -46,4 +46,6 @@ public final class PropertyDescription {
 
   Class<? extends XmlAdapter>               xmlAdapter;
   
+  boolean                                   required = false;
+  
 } /* ENDCLASS */

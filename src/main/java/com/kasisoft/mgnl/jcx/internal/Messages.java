@@ -25,6 +25,9 @@ public class Messages {
   @I18N("%s [property: %s] - it's necessery to provide a GenericsType annotation with the generic type")
   public static I18NFormatter                 msg_missing_generics_type;
 
+  @I18N("%s [property: %s] - the required property cannot be set as the node '%s' doesn't provide this value")
+  public static I18NFormatter                 msg_missing_required_property;
+  
   @I18N("%s [property: %s] - missing setter method")
   public static I18NFormatter                 msg_missing_setter_method;
 

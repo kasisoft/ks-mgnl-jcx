@@ -6,6 +6,7 @@ import info.magnolia.jcr.util.*;
 
 import com.kasisoft.libs.common.text.*;
 
+import com.kasisoft.libs.common.function.*;
 import com.kasisoft.mgnl.jcx.*;
 import com.kasisoft.mgnl.util.*;
 
@@ -33,23 +34,25 @@ import lombok.*;
 public class TypeUnmarshaller<R> {
 
   // a list of properties managed by a certain type
-  List<PropertyDescription>   descriptions;
+  List<PropertyDescription>             descriptions;
 
   // will be invoked to create new instances of this type
-  Supplier<R>                 supplier;
+  Supplier<R>                           supplier;
   
   // will be invoked when the properties had been set. the postprocessing allows to check/handle inconsistencies
   // between dependent properties
-  Consumer<R>                 postprocess;
+  Consumer<R>                           postprocess;
   
   // a reference workspace (see JcxReference)
-  String                      refWorkspace;
+  String                                refWorkspace;
   
   // the property which is used to establish a reference
-  String                      refProperty;
+  String                                refProperty;
   
   // decide whether the referred property will be processed before or after the current node
-  boolean                     before;
+  boolean                               before;
+  
+  TriConsumer<Node, String, String>     unsatisfiedRequireHandler;
   
   /**
    * Creates a new instance which properties will be set to the values provided with the supplied node.
@@ -172,6 +175,8 @@ public class TypeUnmarshaller<R> {
       } catch( Exception ex ) {
         throw JcxException.wrap( ex );
       }
+    } else if( desc.isRequired() ) {
+      unsatisfiedRequireHandler.accept( jcrNode, desc.getOwningType().getName(), desc.getPropertyName() );
     }
   }
   

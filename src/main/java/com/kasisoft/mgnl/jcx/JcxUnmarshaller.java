@@ -62,15 +62,25 @@ public class JcxUnmarshaller {
   Map<Class<?>, TypeUnmarshaller>                                 unmarshallers;
   Map<Class<?>, BiFunction<Node, String, ?>>                      attributeLoaders;
   Map<Class<? extends XmlAdapter>, BiFunction<Node, String, ?>>   xmlAdapterLoaders;
+  TriConsumer<Node, String, String>                               unsatisfiedRequireHandler;
 
   public JcxUnmarshaller() {
-    fieldNameGenerator  = Function.identity();
-    unmarshallers       = new HashMap<>();
-    xmlAdapterLoaders   = new HashMap<>();
-    attributeLoaders    = setupAttributeLoaders();
+    fieldNameGenerator        = Function.identity();
+    unmarshallers             = new HashMap<>();
+    xmlAdapterLoaders         = new HashMap<>();
+    attributeLoaders          = setupAttributeLoaders();
+    unsatisfiedRequireHandler = null;
   }
   
-  protected <R> XmlAdapter<String, R> newXmlAdapter( Class<? extends XmlAdapter> xmlAdapterType ) {
+  private synchronized void unsatisfiedRequire( Node jcrNode, String owningType, String propertyName ) {
+    if( unsatisfiedRequireHandler != null ) {
+      unsatisfiedRequireHandler.accept( jcrNode, owningType, propertyName );
+    } else {
+      log.error( msg_missing_required_property.format( owningType, propertyName, NodeFunctions.getPath( jcrNode ) ) );
+    }
+  }
+  
+  protected synchronized <R> XmlAdapter<String, R> newXmlAdapter( Class<? extends XmlAdapter> xmlAdapterType ) {
     XmlAdapter<String, R> result = null;
     try {
       result = Components.getComponent( xmlAdapterType );
@@ -80,7 +90,7 @@ public class JcxUnmarshaller {
     return result;
   }
   
-  protected <R> BiFunction<Node, String, R> getXmlAdapterLoader( @Nonnull Class<? extends XmlAdapter> xmlAdapter ) {
+  protected synchronized <R> BiFunction<Node, String, R> getXmlAdapterLoader( @Nonnull Class<? extends XmlAdapter> xmlAdapter ) {
     BiFunction<Node, String, R> result = (BiFunction<Node, String, R>) xmlAdapterLoaders.get( xmlAdapter );
     if( result == null ) {
       XmlAdapter<String, R> xml = newXmlAdapter( xmlAdapter );
@@ -90,7 +100,7 @@ public class JcxUnmarshaller {
     return result;
   }
   
-  private <R> R exceptionWrapper( XmlAdapter<String, R> adapter, Node node, String property ) {
+  private synchronized <R> R exceptionWrapper( XmlAdapter<String, R> adapter, Node node, String property ) {
     try {
       BiFunction<Node, String, String> strLoader = getAttributeLoader( String.class );
       return adapter.unmarshal( strLoader.apply( node, property ) );
@@ -111,7 +121,7 @@ public class JcxUnmarshaller {
     attributeLoaders.remove( type );
   }
 
-  private Map<Class<?>, BiFunction<Node, String, ?>> setupAttributeLoaders() {
+  protected synchronized Map<Class<?>, BiFunction<Node, String, ?>> setupAttributeLoaders() {
     
     Map<Class<?>, BiFunction<Node, String, ?>> result = new HashMap<>();
     
@@ -148,6 +158,25 @@ public class JcxUnmarshaller {
    */
   public synchronized void setFieldNameGenerator( @Nullable Function<String, String> nameGen ) {
     fieldNameGenerator = nameGen != null ? nameGen : Function.identity();
+  }
+  
+  /**
+   * This function allows to specify a handler that deals with situations where an attribute/element is required
+   * but not available. By default these situations will only be logged.
+   * The handler accepts the following parameters:
+   * <ul>
+   *   <li>the node which doesn't provide the value</li>
+   *   <li>the missing/erraneous property</li>
+   * </ul>
+   * NOTE: If you intend to raise a {@link RuntimeException} it MUST inherit {@link JcxException} as it won't
+   *       be passed otherwise. If it's not inheriting from the {@link JcxException} you will find your exception
+   *       as a causing one.
+   * 
+   * @param handler   The new handler.
+   *                  <code>null</code> <=> A conflict will be logged only.
+   */
+  public synchronized void setUnsatisfiedRequireHandler( @Nullable TriConsumer<Node, String, String> handler ) {
+    unsatisfiedRequireHandler = handler;
   }
 
   /**
@@ -196,11 +225,11 @@ public class JcxUnmarshaller {
     return getUnmarshaller( type )::createSubnode;
   }
 
-  private Object create( Node dataNode, Class<?> clazz ) {
+  private synchronized Object create( Node dataNode, Class<?> clazz ) {
     return createCreator( clazz ).apply( dataNode ); 
   }
 
-  private <T> TypeUnmarshaller<T> getUnmarshaller( Class<T> type ) {
+  protected synchronized <T> TypeUnmarshaller<T> getUnmarshaller( Class<T> type ) {
     TypeUnmarshaller<T> result = unmarshallers.get( type );
     if( result == null ) {
       result = buildUnmarshaller( type );
@@ -216,7 +245,7 @@ public class JcxUnmarshaller {
    * 
    * @return   The unmarshaller. Not <code>null</code>.
    */
-  private TypeUnmarshaller buildUnmarshaller( Class<?> type ) {
+  private synchronized TypeUnmarshaller buildUnmarshaller( Class<?> type ) {
     try {
       
       List<PropertyDescription> properties = introspect( type ).stream()
@@ -263,7 +292,8 @@ public class JcxUnmarshaller {
         before       = jcxReference.before();
       }
       
-      return new TypeUnmarshaller( properties, newSupplier( type ), postprocess, refworkspace, refproperty, before );
+      TriConsumer<Node, String, String> requireHandler = this::unsatisfiedRequire;
+      return new TypeUnmarshaller( properties, newSupplier( type ), postprocess, refworkspace, refproperty, before, requireHandler );
       
     } catch( Exception ex ) {
       log.error( msg_failed_to_create_unmarshaller.format( type.getName(), ex.getLocalizedMessage() ), ex );
@@ -271,19 +301,19 @@ public class JcxUnmarshaller {
     }
   }
   
-  private Supplier newSupplier( Class<?> type ) {
+  private synchronized Supplier newSupplier( Class<?> type ) {
     Supplier          result            = null;
     ComponentProvider componentProvider = Components.getComponentProvider();
     if( componentProvider instanceof GuiceComponentProvider ) {
       result = () -> componentProvider.newInstanceWithParameterResolvers( type, new GuiceParameterResolver( (GuiceComponentProvider) componentProvider ) );
     } else {
-      log.warn( msg_non_guice_component_provider.format( type.getName() ) );
+      log.trace( msg_non_guice_component_provider.format( type.getName() ) );
       result = () -> componentProvider.newInstance( type );
     }
     return result;
   }
   
-  private <R> List<R> getElements( Node node, String nodeName, String subProperty, Class<R> type ) {
+  private synchronized <R> List<R> getElements( Node node, String nodeName, String subProperty, Class<R> type ) {
     try {
       List<R> result = Collections.emptyList();
       if( subProperty != null ) {
@@ -313,7 +343,7 @@ public class JcxUnmarshaller {
     }
   }
   
-  private List<Node> getNodes( Node parent ) throws RepositoryException {
+  private synchronized List<Node> getNodes( Node parent ) throws RepositoryException {
     List<Node>   result   = new ArrayList<>();
     NodeIterator iterator = parent.getNodes();
     while( iterator.hasNext() ) {
@@ -322,7 +352,7 @@ public class JcxUnmarshaller {
     return result;
   }
   
-  private <R> List<R> getAttributesUsingXmlAdapter( Node node, String nodeName, Class<R> type, Class<? extends XmlAdapter> xmlAdapterType ) {
+  private synchronized <R> List<R> getAttributesUsingXmlAdapter( Node node, String nodeName, Class<R> type, Class<? extends XmlAdapter> xmlAdapterType ) {
     try {
       List<R>      result    = Collections.emptyList();
       List<String> strValues = getAttributes( node, nodeName, String.class );
@@ -339,7 +369,7 @@ public class JcxUnmarshaller {
     }
   }
 
-  private <R> List<R> getAttributes( Node node, String nodeName, Class<R> type ) { 
+  private synchronized <R> List<R> getAttributes( Node node, String nodeName, Class<R> type ) { 
     try {
       List<R>      result = Collections.emptyList();
       List<String> names  = getPropertyNames( node, nodeName );
@@ -355,7 +385,7 @@ public class JcxUnmarshaller {
     }
   }
   
-  private List<String> getPropertyNames( Node node, String nodeName ) throws RepositoryException {
+  private synchronized List<String> getPropertyNames( Node node, String nodeName ) throws RepositoryException {
     List<String>     result   = Collections.emptyList();
     PropertyIterator iterator = node.getProperties( nodeName + "*" );
     if( iterator.hasNext() ) {
@@ -368,7 +398,7 @@ public class JcxUnmarshaller {
     return result;
   }
 
-  private List<String> getNodeNames( Node node, String nodeName ) throws RepositoryException {
+  private synchronized List<String> getNodeNames( Node node, String nodeName ) throws RepositoryException {
     List<String> result   = Collections.emptyList();
     NodeIterator iterator = node.getNodes( nodeName + "*" );
     if( iterator.hasNext() ) {
@@ -381,7 +411,7 @@ public class JcxUnmarshaller {
     return result;
   }
 
-  private <R> R getElement( Node node, String nodeName, Class<R> type ) {
+  private synchronized <R> R getElement( Node node, String nodeName, Class<R> type ) {
     R    result   = null;
     Node dataNode = getNode( node, nodeName );
     if( dataNode != null ) {
@@ -390,7 +420,7 @@ public class JcxUnmarshaller {
     return result;
   }
 
-  private Node getNode( Node node, String nodeName ) {
+  private synchronized Node getNode( Node node, String nodeName ) {
     Node result = null;
     if( NAME_DIRECT.equals( nodeName ) ) {
       result = node;
@@ -406,11 +436,11 @@ public class JcxUnmarshaller {
     return result;
   }
 
-  private boolean isNotTransient( PropertyDescription description ) {
+  private synchronized boolean isNotTransient( PropertyDescription description ) {
     return description.getField().getAnnotation( XmlTransient.class ) == null;
   }
   
-  private boolean hasGenericsType( PropertyDescription description ) {
+  private synchronized boolean hasGenericsType( PropertyDescription description ) {
     boolean result = description.getCollectionType() == null || description.getType() != null;
     if( (! result) && isNotTransient( description ) ) {
       log.warn( msg_missing_generics_type.format( description.getOwningType().getName(), description.getPropertyName() ) ); 
@@ -418,7 +448,7 @@ public class JcxUnmarshaller {
     return result;
   }
 
-  private boolean hasSetter( PropertyDescription description ) {
+  private synchronized boolean hasSetter( PropertyDescription description ) {
     boolean result = description.getSetter() != null;
     if( ! result ) {
       log.warn( msg_missing_setter_method.format( description.getOwningType().getName(), description.getPropertyName() ) ); 
@@ -426,25 +456,25 @@ public class JcxUnmarshaller {
     return result;
   }
 
-  private boolean isInteresting( PropertyDescription description ) {
+  private synchronized boolean isInteresting( PropertyDescription description ) {
     XmlAttribute      xmlAttr     = description.getField().getAnnotation( XmlAttribute.class );
     XmlElement        xmlElem     = description.getField().getAnnotation( XmlElement.class );
     XmlElementWrapper xmlWrapper  = description.getField().getAnnotation( XmlElementWrapper.class );
     return (xmlAttr != null) || (xmlElem != null) || (xmlWrapper != null);
   }
   
-  private boolean isAttribute( PropertyDescription description ) {
+  private synchronized boolean isAttribute( PropertyDescription description ) {
     XmlAttribute xmlAttr = description.getField().getAnnotation( XmlAttribute.class );
     return xmlAttr != null;
   }
   
-  private List<PropertyDescription> introspect( Class<?> type ) throws NoSuchMethodException, SecurityException {
+  private synchronized List<PropertyDescription> introspect( Class<?> type ) throws NoSuchMethodException, SecurityException {
     Map<String, PropertyDescription> descriptions = new HashMap<>();
     introspect( type, type, descriptions );
     return new ArrayList<>( descriptions.values() );
   }
   
-  private void introspect( Class<?> basetype, Class<?> type, Map<String, PropertyDescription> properties ) throws NoSuchMethodException, SecurityException {
+  private synchronized void introspect( Class<?> basetype, Class<?> type, Map<String, PropertyDescription> properties ) throws NoSuchMethodException, SecurityException {
     
     Class<?> superclass = type.getSuperclass();
     if( (superclass != null) && (superclass != Object.class) ) {
@@ -460,7 +490,19 @@ public class JcxUnmarshaller {
     
   }
   
-  private void introspectField( Class<?> basetype, Class<?> type, Field field, Map<String, PropertyDescription> properties ) {
+  private synchronized boolean isRequired( Field field ) {
+    boolean      result  = false;
+    XmlAttribute xmlattr = field.getAnnotation( XmlAttribute . class );
+    XmlElement   xmlelem = field.getAnnotation( XmlElement   . class );
+    if( xmlattr != null ) {
+      result = xmlattr.required();
+    } else if( xmlelem != null ) {
+      result = xmlelem.required();
+    }
+    return result;
+  }
+  
+  private synchronized void introspectField( Class<?> basetype, Class<?> type, Field field, Map<String, PropertyDescription> properties ) {
     String                name          = fieldNameGenerator.apply( field.getName() );
     String                propertyName  = getPropertyName( field, name );
     String                subProperty   = null;
@@ -478,6 +520,7 @@ public class JcxUnmarshaller {
     description.setPropertyName( propertyName );
     description.setSubProperty( subProperty );
     description.setField( field );
+    description.setRequired( isRequired( field ) );
     if( Collection.class.isAssignableFrom( field.getType() ) ) {
       description.setCollectionType( field.getType() );
       GenericsType genericsType = field.getAnnotation( GenericsType.class );
@@ -496,7 +539,7 @@ public class JcxUnmarshaller {
     properties.put( name, description );
   }
   
-  private String getPropertyName( Field field, String defaultName ) {
+  private synchronized String getPropertyName( Field field, String defaultName ) {
     String        result  = defaultName;
     String        name    = null;
     XmlAttribute  xmlAttr = field.getAnnotation( XmlAttribute.class );
@@ -511,7 +554,7 @@ public class JcxUnmarshaller {
     return result;
   }
   
-  private String cleanup( String str ) {
+  private synchronized String cleanup( String str ) {
     String result = str;
     if( NAME_DEFAULT.equals( result ) ) {
       result = null;
