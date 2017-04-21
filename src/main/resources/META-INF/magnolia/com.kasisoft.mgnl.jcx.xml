@@ -2,9 +2,9 @@
 <!DOCTYPE module SYSTEM "module.dtd">
 <module>
 
-  <name>mgnl-jcx</name>
-  <displayName>Jcx</displayName>
-  <description>Jcx</description>
+  <name>${project.artifactId}</name>
+  <displayName>${project.artifactId}</displayName>
+  <description>${project.artifactId}</description>
   <version>${project.version}</version>
   
   <components>
