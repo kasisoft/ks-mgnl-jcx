@@ -63,15 +63,38 @@ public class JcxUnmarshaller {
   Map<Class<?>, BiFunction<Node, String, ?>>                      attributeLoaders;
   Map<Class<? extends XmlAdapter>, BiFunction<Node, String, ?>>   xmlAdapterLoaders;
   TriConsumer<Node, String, String>                               unsatisfiedRequireHandler;
+  Map<Class<?>, Set<String>>                                      xmlTransientProperties;
+  Set<String>                                                     xmlTransientPropertyNames;
 
   public JcxUnmarshaller() {
     fieldNameGenerator        = Function.identity();
     unmarshallers             = new HashMap<>();
     xmlAdapterLoaders         = new HashMap<>();
+    xmlTransientProperties    = new HashMap<>();
+    xmlTransientPropertyNames = new HashSet<>();
     attributeLoaders          = setupAttributeLoaders();
     unsatisfiedRequireHandler = null;
   }
   
+  public synchronized void registerXmlTransientProperties( @Nonnull Class<?> clazz, String ... properties ) {
+    Set<String> props = xmlTransientProperties.get( clazz );
+    if( props == null ) {
+      props = new HashSet<>();
+      xmlTransientProperties.put( clazz, props );
+    }
+    List<String> list = Arrays.asList( properties );
+    props.addAll( list );
+    xmlTransientPropertyNames.addAll( list );
+  }
+  
+  public synchronized void unregisterXmlTransientProperties( @Nonnull Class<?> clazz ) {
+    xmlTransientProperties.remove( clazz );
+    xmlTransientPropertyNames.clear();
+    for( Set<String> names : xmlTransientProperties.values() ) {
+      xmlTransientPropertyNames.addAll( names );
+    }
+  }
+
   private synchronized void unsatisfiedRequire( Node jcrNode, String owningType, String propertyName ) {
     if( unsatisfiedRequireHandler != null ) {
       unsatisfiedRequireHandler.accept( jcrNode, owningType, propertyName );
@@ -437,7 +460,21 @@ public class JcxUnmarshaller {
   }
 
   private synchronized boolean isNotTransient( PropertyDescription description ) {
-    return description.getField().getAnnotation( XmlTransient.class ) == null;
+    boolean result = description.getField().getAnnotation( XmlTransient.class ) == null;
+    if( result && (! xmlTransientProperties.isEmpty()) && xmlTransientPropertyNames.contains( description.getPropertyName() ) ) {
+      // this property has been registered as XmlTransient by default. this is helpful to disable properties
+      // of classes which aren't under our control so we can't mark them explicitly as xml transient
+      for( Map.Entry<Class<?>, Set<String>> entry : xmlTransientProperties.entrySet() ) {
+        if( entry.getValue().contains( description.getPropertyName() ) ) {
+          if( entry.getKey().isAssignableFrom( description.getOwningType() ) ) {
+            // this property is marked explicitly as xml transient
+            result = false;
+            break;
+          }
+        }
+      }
+    }
+    return result;
   }
   
   private synchronized boolean hasGenericsType( PropertyDescription description ) {
