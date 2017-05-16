@@ -35,6 +35,9 @@ public final class PropertyDescription {
   // the setter method for the property. only has one argument
   Method                                    setter;
   
+  // a getter method for this property
+  Method                                    getter;
+  
   // the type of the collection/map. maybe null
   Class<?>                                  collectionType;
   

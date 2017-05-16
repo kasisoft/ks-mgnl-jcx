@@ -27,7 +27,10 @@ public class Messages {
 
   @I18N("%s [property: %s] - the required property cannot be set as the node '%s' doesn't provide this value")
   public static I18NFormatter                 msg_missing_required_property;
-  
+
+  @I18N("%s [property: %s] - missing getter method")
+  public static I18NFormatter                 msg_missing_getter_method;
+
   @I18N("%s [property: %s] - missing setter method")
   public static I18NFormatter                 msg_missing_setter_method;
 

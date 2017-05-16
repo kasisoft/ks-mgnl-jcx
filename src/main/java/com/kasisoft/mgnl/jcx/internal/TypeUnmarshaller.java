@@ -127,18 +127,40 @@ public class TypeUnmarshaller<R> {
       
       R result = destination;
       
-      // make sure the current state consitutes available content
+      if( result != null ) {
+        // test if all required elements had been set
+        final Object o = result;
+        boolean allset = descriptions.stream().map( $ -> test( $, o ) ).reduce( true, ($a, $b) -> $a && $b );
+        if( ! allset ) {
+          result = null;
+        }
+      }
+      
+      // make sure the current state constitutes available content
       if( (result instanceof IContent) && (! ((IContent) result).hasContent()) ) {
         log.warn( msg_incomplete_content.format( NodeFunctions.getPath( jcrNode ) ) );
         result = null;
       }
-      
       return result;
       
     } catch( Exception ex ) {
       throw JcxException.wrap( ex );
     }
     
+  }
+  
+  private boolean test( PropertyDescription description, Object instance ) {
+    boolean result = ! description.isRequired();
+    if( ! result ) {
+      try {
+        // test if the required value had been set
+        Object val = description.getGetter().invoke( instance );
+        result     = val != null;
+      } catch( Exception ex ) {
+        log.error( ex.getLocalizedMessage(), ex );
+      }
+    }
+    return result;
   }
   
   /**

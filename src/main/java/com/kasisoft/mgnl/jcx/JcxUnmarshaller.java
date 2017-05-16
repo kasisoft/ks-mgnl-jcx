@@ -275,6 +275,7 @@ public class JcxUnmarshaller {
         .filter( this::hasGenericsType )
         .filter( this::isNotTransient )
         .filter( this::hasSetter )
+        .filter( this::hasGetter )
         .filter( this::isInteresting )
         .collect( Collectors.toList() );
       
@@ -358,6 +359,12 @@ public class JcxUnmarshaller {
           result = names.stream()
             .map( $ -> subloader.apply( node, $ ) )
             .collect( Collectors.toList() );
+        }
+      }
+      for( int i = result.size() - 1; i >= 0; i-- ) {
+        if( result.get(i) == null ) {
+          // an element is null due to the fact that there's no 'require' handling
+          result.remove(i);
         }
       }
       return result;
@@ -493,6 +500,18 @@ public class JcxUnmarshaller {
     return result;
   }
 
+  private synchronized boolean hasGetter( PropertyDescription description ) {
+    boolean result = true;
+    if( description.isRequired() ) {
+      // we only need the getter if the property is required
+      result = description.getGetter() != null; 
+      if( ! result ) {
+        log.warn( msg_missing_getter_method.format( description.getOwningType().getName(), description.getPropertyName() ) );
+      }
+    }
+    return result;
+  }
+
   private synchronized boolean isInteresting( PropertyDescription description ) {
     XmlAttribute      xmlAttr     = description.getField().getAnnotation( XmlAttribute.class );
     XmlElement        xmlElem     = description.getField().getAnnotation( XmlElement.class );
@@ -567,13 +586,25 @@ public class JcxUnmarshaller {
     } else {
       description.setType( field.getType() );
     }
-    try {
-      String setterName = String.format( "set%s", StringFunctions.firstUp( field.getName() ) );
-      description.setSetter( type.getDeclaredMethod( setterName, field.getType() ) );
-    } catch( NoSuchMethodException | SecurityException ex ) {
-      // will be reported later
-    }
+    description.setSetter( lookupMethod( field.getName(), type, new Class[] { field.getType() }, "set" ) );
+    description.setGetter( lookupMethod( field.getName(), type, new Class[0], "get", "is" ) );
     properties.put( name, description );
+  }
+  
+  private Method lookupMethod( String name, Class<?> type, Class[] params, String ... prefixes ) {
+    Method result   = null;
+    String basename = StringFunctions.firstUp( name );
+    for( String prefix : prefixes ) {
+      try {
+        result = type.getDeclaredMethod( String.format( "%s%s", prefix, basename ), params );
+        if( result != null ) {
+          break;
+        }
+      } catch( Exception ex ) {
+        // will be reported later
+      }
+    }
+    return result;
   }
   
   private synchronized String getPropertyName( Field field, String defaultName ) {
