@@ -33,6 +33,10 @@ import lombok.*;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class TypeUnmarshaller<R> {
 
+  JcxUnmarshaller                       jcxUnmarshaller;
+  
+  Class<R>                              type;
+  
   // a list of properties managed by a certain type
   List<PropertyDescription>             descriptions;
 
@@ -62,8 +66,9 @@ public class TypeUnmarshaller<R> {
    * @return   A new instance.
    */
   @Nullable
-  public R create( @Nonnull Node jcrNode ) {
+  public R create( @Nonnull Node jcrNode, @Nullable Class<?> owningType ) {
     R result = (R) supplier.get();
+    configure( result, owningType );
     if( result != null ) {
       result = apply( jcrNode, result );
     }
@@ -80,15 +85,22 @@ public class TypeUnmarshaller<R> {
    * @return   A new instance.
    */
   @Nullable
-  public R createSubnode( @Nonnull Node jcrNode, @Nonnull String nodeName ) {
+  public R createSubnode( @Nonnull Node jcrNode, @Nonnull String nodeName, @Nullable Class<?> owningType ) {
     try {
       R result = (R) supplier.get();
+      configure( result, owningType );
       if( jcrNode.hasNode( nodeName ) ) {
         result = apply( jcrNode.getNode( nodeName ), result );
       }
       return result;
     } catch( Exception ex ) {
       throw JcxException.wrap( ex );
+    }
+  }
+
+  private void configure( R instance, @Nullable Class<?> owningType ) {
+    if( owningType != null ) {
+      jcxUnmarshaller.getIntervention( owningType, type ).accept( instance );
     }
   }
   

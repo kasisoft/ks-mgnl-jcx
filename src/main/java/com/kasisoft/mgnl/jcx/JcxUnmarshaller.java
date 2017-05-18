@@ -65,10 +65,12 @@ public class JcxUnmarshaller {
   TriConsumer<Node, String, String>                               unsatisfiedRequireHandler;
   Map<Class<?>, Set<String>>                                      xmlTransientProperties;
   Set<String>                                                     xmlTransientPropertyNames;
-
+  Map<String, Consumer>                                           interventions;
+  
   public JcxUnmarshaller() {
     fieldNameGenerator        = Function.identity();
     unmarshallers             = new HashMap<>();
+    interventions             = new HashMap<>();
     xmlAdapterLoaders         = new HashMap<>();
     xmlTransientProperties    = new HashMap<>();
     xmlTransientPropertyNames = new HashSet<>();
@@ -76,6 +78,26 @@ public class JcxUnmarshaller {
     unsatisfiedRequireHandler = null;
   }
   
+  public synchronized <T> void registerIntervention( @Nonnull Class<?> parentType, @Nonnull Class<T> type, Consumer<T> intervention ) {
+    String key = String.format( "%s:%s", parentType.getName(), type.getName() );
+    interventions.put( key, intervention );
+  }
+
+  public synchronized <T> void unregisterIntervention( @Nonnull Class<?> parentType, @Nonnull Class<T> type ) {
+    String key = String.format( "%s:%s", parentType.getName(), type.getName() );
+    interventions.remove( key );
+  }
+
+  @Nonnull
+  public synchronized <T> Consumer<T> getIntervention( @Nonnull Class<?> parentType, @Nonnull Class<T> type ) {
+    String      key    = String.format( "%s:%s", parentType.getName(), type.getName() );
+    Consumer<T> result = interventions.get( key );
+    if( result == null ) {
+      result = $ -> {};
+    }
+    return result;
+  }
+
   public synchronized void registerXmlTransientProperties( @Nonnull Class<?> clazz, String ... properties ) {
     Set<String> props = xmlTransientProperties.get( clazz );
     if( props == null ) {
@@ -234,7 +256,18 @@ public class JcxUnmarshaller {
    * @return   The creation function. Not <code>null</code>.
    */
   public synchronized <T> Function<Node, T> createCreator( @Nonnull Class<T> type ) {
-    return getUnmarshaller( type )::create;
+    return createCreator( type, null );
+  }
+
+  /**
+   * Like {@link #createLoader(Class)} with the difference that the resulting object will be created, too.
+   * 
+   * @param type   The type of data that is supposed to be created.
+   * 
+   * @return   The creation function. Not <code>null</code>.
+   */
+  private synchronized <T> Function<Node, T> createCreator( @Nonnull Class<T> type, @Nullable Class<?> owningType ) {
+    return $n -> getUnmarshaller( type ).create( $n, owningType );
   }
 
   /**
@@ -245,11 +278,15 @@ public class JcxUnmarshaller {
    * @return   The creation function. Not <code>null</code>.
    */
   public synchronized <T> BiFunction<Node, String, T> createSubnodeCreator( @Nonnull Class<T> type ) {
-    return getUnmarshaller( type )::createSubnode;
+    return createSubnodeCreator( type, null );
   }
 
-  private synchronized Object create( Node dataNode, Class<?> clazz ) {
-    return createCreator( clazz ).apply( dataNode ); 
+  private synchronized <T> BiFunction<Node, String, T> createSubnodeCreator( @Nonnull Class<T> type, Class<?> owningType ) {
+    return ($n, $s) -> getUnmarshaller( type ).createSubnode( $n, $s, owningType );
+  }
+
+  private synchronized Object create( Node dataNode, Class<?> clazz, Class<?> owningType ) {
+    return createCreator( clazz, owningType ).apply( dataNode ); 
   }
 
   protected synchronized <T> TypeUnmarshaller<T> getUnmarshaller( Class<T> type ) {
@@ -295,9 +332,9 @@ public class JcxUnmarshaller {
             }
           }
         } else if( property.getCollectionType() != null ) {
-          property.setLoader( ($1, $2) -> getElements( $1, $2, property.getSubProperty(), property.getType() ) );
+          property.setLoader( ($1, $2) -> getElements( $1, $2, type, property.getSubProperty(), property.getType() ) );
         } else {
-          property.setLoader( ($1, $2) -> getElement( $1, $2, property.getType() ) );
+          property.setLoader( ($1, $2) -> getElement( $1, $2, type, property.getType() ) );
         }
       }
       
@@ -317,7 +354,7 @@ public class JcxUnmarshaller {
       }
       
       TriConsumer<Node, String, String> requireHandler = this::unsatisfiedRequire;
-      return new TypeUnmarshaller( properties, newSupplier( type ), postprocess, refworkspace, refproperty, before, requireHandler );
+      return new TypeUnmarshaller( this, type, properties, newSupplier( type ), postprocess, refworkspace, refproperty, before, requireHandler );
       
     } catch( Exception ex ) {
       log.error( msg_failed_to_create_unmarshaller.format( type.getName(), ex.getLocalizedMessage() ), ex );
@@ -337,7 +374,7 @@ public class JcxUnmarshaller {
     return result;
   }
   
-  private synchronized <R> List<R> getElements( Node node, String nodeName, String subProperty, Class<R> type ) {
+  private synchronized <R> List<R> getElements( Node node, String nodeName, Class<?> owningType, String subProperty, Class<R> type ) {
     try {
       List<R> result = Collections.emptyList();
       if( subProperty != null ) {
@@ -345,7 +382,7 @@ public class JcxUnmarshaller {
           Node       containerNode = node.getNode( subProperty );
           List<Node> nodes         = getNodes( containerNode );
           if( ! nodes.isEmpty() ) {
-            Function<Node, R> creator = createCreator( type );
+            Function<Node, R> creator = createCreator( type, owningType );
             result                    = nodes.stream()
               .map( creator::apply )
               .collect( Collectors.toList() );
@@ -355,7 +392,7 @@ public class JcxUnmarshaller {
       } else {
         List<String> names  = getNodeNames( node, nodeName );
         if( ! names.isEmpty() ) {
-          BiFunction<Node, String, R> subloader = createSubnodeCreator( type );
+          BiFunction<Node, String, R> subloader = createSubnodeCreator( type, owningType );
           result = names.stream()
             .map( $ -> subloader.apply( node, $ ) )
             .collect( Collectors.toList() );
@@ -441,11 +478,11 @@ public class JcxUnmarshaller {
     return result;
   }
 
-  private synchronized <R> R getElement( Node node, String nodeName, Class<R> type ) {
+  private synchronized <R> R getElement( Node node, String nodeName, Class<?> owningType, Class<R> type ) {
     R    result   = null;
     Node dataNode = getNode( node, nodeName );
     if( dataNode != null ) {
-      result = (R) create( dataNode, type );
+      result = (R) create( dataNode, type, owningType );
     }
     return result;
   }
