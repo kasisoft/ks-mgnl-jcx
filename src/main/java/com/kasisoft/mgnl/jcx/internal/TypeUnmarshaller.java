@@ -124,19 +124,16 @@ public class TypeUnmarshaller<R> {
         
         Node refNode = getRefNode( jcrNode );
         if( useOriginalNode == UseOriginalNode.before ) {
-          System.err.println( "before: " + jcrNode );
           // apply the values for each property first
           descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
         }
         
         if( refNode != null ) {
-          System.err.println( "ref: " + refNode );
           // if there's a reference we're using the target as an additional source
           descriptions.forEach( $ -> apply( refNode, destination, $ ) );
         }
 
         if( useOriginalNode == UseOriginalNode.after ) {
-          System.err.println( "after: " + jcrNode );
           // apply the values for each property first
           descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
         }
