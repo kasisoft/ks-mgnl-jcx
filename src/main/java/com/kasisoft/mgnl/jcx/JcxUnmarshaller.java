@@ -2,6 +2,8 @@ package com.kasisoft.mgnl.jcx;
 
 import static com.kasisoft.mgnl.jcx.internal.Messages.*;
 
+import info.magnolia.context.*;
+
 import com.kasisoft.libs.common.text.*;
 
 import com.kasisoft.libs.common.annotation.*;
@@ -309,31 +311,47 @@ public class JcxUnmarshaller {
     try {
       
       List<PropertyDescription> properties = introspect( type ).stream()
+          
+        // we require the specific generic types for instantiation
         .filter( this::hasGenericsType )
+        
+        // transient marked properties won't be processed
         .filter( this::isNotTransient )
+        
+        // we reqire getters and setters
         .filter( this::hasSetter )
         .filter( this::hasGetter )
+        
+        // last but not least we need an annotation allowing for us to process the serialization
         .filter( this::isInteresting )
+        
         .collect( Collectors.toList() );
       
       for( PropertyDescription property : properties ) {
         if( isAttribute( property ) ) {
+          // @XmlAttribute
           if( property.getCollectionType() != null ) {
+            // we're dealing with a collection here
             if( property.getXmlAdapter() != null ) {
               property.setLoader( ($1, $2) -> getAttributesUsingXmlAdapter( $1, $2, property.getType(), property.getXmlAdapter() ) );
             } else {
               property.setLoader( ($1, $2) -> getAttributes( $1, $2, property.getType() ) );
             }
           } else {
+            // a simple attribute
             if( property.getXmlAdapter() != null ) {
               property.setLoader( getXmlAdapterLoader( property.getXmlAdapter() ) );
             } else {
               property.setLoader( getAttributeLoader( property.getType() ) );
             }
           }
+        } else if( property.getJcxRef() != null ) {
+          property.setLoader( ($1, $2) -> getElementByReference( $1, $2, type, property.getType(), property.getJcxRef() ) );
         } else if( property.getCollectionType() != null ) {
+          // @XmlElement on a collection
           property.setLoader( ($1, $2) -> getElements( $1, $2, type, property.getSubProperty(), property.getType() ) );
         } else {
+          // @XmlElement on a single element
           property.setLoader( ($1, $2) -> getElement( $1, $2, type, property.getType() ) );
         }
       }
@@ -478,6 +496,62 @@ public class JcxUnmarshaller {
     return result;
   }
 
+  private synchronized <R> R getElementByReference( Node node, String nodeName, Class<?> owningType, Class<R> type, JcxReference jcxReference ) {
+    R       result    = null;
+    Node    reference = getReferredNode( getAttributeLoader( String.class ).apply( node, jcxReference.property() ), jcxReference ); 
+    if( reference != null ) {
+      // init before using the node
+      if( jcxReference.before() ) {
+        result = (R) create( node, type, owningType );
+      }
+      // load the data of the referred node
+      if( result != null ) {
+        result = createLoader( type ).apply( reference, result );
+      } else {
+        result = (R) create( reference, type, owningType );
+      }
+      // override settings using the node
+      if( ! jcxReference.before() ) {
+        result = createLoader( type ).apply( node, result );
+      }
+    }
+    return result;
+  }
+  
+  private Node getReferredNode( String pathOrUuid, JcxReference jcxReference ) {
+    pathOrUuid  = StringFunctions.cleanup( pathOrUuid );
+    Node result = null;
+    if( pathOrUuid != null ) {
+      int open  = pathOrUuid.charAt(0);
+      int close = pathOrUuid.indexOf('}');
+      if( open == '[' ) {
+        // external link
+        pathOrUuid = null;
+      } else if( open == '{' ) {
+        if( close != -1 ) {
+          pathOrUuid = pathOrUuid.substring( 1, close );
+        } else {
+          //
+          pathOrUuid = null;
+        }
+      }
+    }
+    if( pathOrUuid != null ) {
+      try {
+        Session session = MgnlContext.getJCRSession( jcxReference.value() );
+        try {
+          UUID.fromString( pathOrUuid );
+          result = session.getNodeByIdentifier( pathOrUuid );
+        } catch( Exception ex ) {
+          result = session.getNode( pathOrUuid );
+        }
+      } catch( Exception ex ) {
+        throw JcxException.wrap( ex );
+      }
+    }
+    return result;
+  }
+  
   private synchronized <R> R getElement( Node node, String nodeName, Class<?> owningType, Class<R> type ) {
     R    result   = null;
     Node dataNode = getNode( node, nodeName );
@@ -504,7 +578,7 @@ public class JcxUnmarshaller {
   }
 
   private synchronized boolean isNotTransient( PropertyDescription description ) {
-    boolean result = description.getField().getAnnotation( XmlTransient.class ) == null;
+    boolean result = (description.getField().getAnnotation( XmlTransient.class ) == null) && (description.getJcxRef() == null);
     if( result && (! xmlTransientProperties.isEmpty()) && xmlTransientPropertyNames.contains( description.getPropertyName() ) ) {
       // this property has been registered as XmlTransient by default. this is helpful to disable properties
       // of classes which aren't under our control so we can't mark them explicitly as xml transient
@@ -553,7 +627,8 @@ public class JcxUnmarshaller {
     XmlAttribute      xmlAttr     = description.getField().getAnnotation( XmlAttribute.class );
     XmlElement        xmlElem     = description.getField().getAnnotation( XmlElement.class );
     XmlElementWrapper xmlWrapper  = description.getField().getAnnotation( XmlElementWrapper.class );
-    return (xmlAttr != null) || (xmlElem != null) || (xmlWrapper != null);
+    JcxReference      jcxRef      = description.getJcxRef();
+    return (xmlAttr != null) || (xmlElem != null) || (xmlWrapper != null) || (jcxRef != null);
   }
   
   private synchronized boolean isAttribute( PropertyDescription description ) {
@@ -622,6 +697,10 @@ public class JcxUnmarshaller {
       }
     } else {
       description.setType( field.getType() );
+    }
+    if( (description.getCollectionType() == null) && (!description.getType().isPrimitive()) && (description.getType() != String.class) ) {
+      // we only support jcx reference for non collections, non primitives an no strings
+      description.setJcxRef( field.getAnnotation( JcxReference.class ) );
     }
     description.setSetter( lookupMethod( field.getName(), type, new Class[] { field.getType() }, "set" ) );
     description.setGetter( lookupMethod( field.getName(), type, new Class[0], "get", "is" ) );

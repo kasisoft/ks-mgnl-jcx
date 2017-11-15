@@ -1,5 +1,7 @@
 package com.kasisoft.mgnl.jcx.internal;
 
+import com.kasisoft.mgnl.jcx.*;
+
 import javax.jcr.*;
 import javax.xml.bind.annotation.adapters.*;
 
@@ -50,5 +52,8 @@ public final class PropertyDescription {
   Class<? extends XmlAdapter>               xmlAdapter;
   
   boolean                                   required = false;
+  
+  // possibility to use referenced nodes as a source
+  JcxReference                              jcxRef = null;
   
 } /* ENDCLASS */

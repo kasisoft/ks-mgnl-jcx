@@ -11,7 +11,7 @@ import java.lang.annotation.*;
  * @author daniel.kasmeroglu@kasisoft.net
  */
 @Retention(RUNTIME)
-@Target(TYPE)
+@Target({TYPE, FIELD})
 public @interface JcxReference {
 
   String value() default RepositoryConstants.WEBSITE;
