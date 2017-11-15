@@ -53,6 +53,7 @@ public class FieldNameGeneratorTest extends AbstractJcxUnmarshaller {
   }
 
   @Getter @Setter
+  @ToString
   @EqualsAndHashCode
   @FieldDefaults(level = AccessLevel.PRIVATE)
   public static final class SimpleObjectTypes {

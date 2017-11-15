@@ -361,18 +361,18 @@ public class JcxUnmarshaller {
         postprocess = $ -> ((IPostProcessor) $).postprocess();
       }
       
-      String       refproperty  = null;
-      String       refworkspace = null;
-      boolean      before       = true;
+      String                        refproperty  = null;
+      String                        refworkspace = null;
+      JcxReference.UseOriginalNode  useOriginal  = null;
       JcxReference jcxReference = type.getAnnotation( JcxReference.class );
       if( jcxReference != null ) {
         refproperty  = jcxReference.property();
         refworkspace = jcxReference.value();
-        before       = jcxReference.before();
+        useOriginal  = jcxReference.useOriginalNode();
       }
       
       TriConsumer<Node, String, String> requireHandler = this::unsatisfiedRequire;
-      return new TypeUnmarshaller( this, type, properties, newSupplier( type ), postprocess, refworkspace, refproperty, before, requireHandler );
+      return new TypeUnmarshaller( this, type, properties, newSupplier( type ), postprocess, refworkspace, refproperty, useOriginal, requireHandler );
       
     } catch( Exception ex ) {
       log.error( msg_failed_to_create_unmarshaller.format( type.getName(), ex.getLocalizedMessage() ), ex );
@@ -500,20 +500,22 @@ public class JcxUnmarshaller {
     R       result    = null;
     Node    reference = getReferredNode( getAttributeLoader( String.class ).apply( node, jcxReference.property() ), jcxReference ); 
     if( reference != null ) {
-      // init before using the node
-      if( jcxReference.before() ) {
-        result = (R) create( reference, type, owningType );
-      }
-      // load the data of the referred node
-      if( result != null ) {
-        result = createLoader( type ).apply( node, result );
-      } else {
+      
+      if( jcxReference.useOriginalNode() == JcxReference.UseOriginalNode.before ) {
         result = (R) create( node, type, owningType );
       }
-      // override settings using the node
-      if( ! jcxReference.before() ) {
+
+      // load the data of the referred node
+      if( result != null ) {
         result = createLoader( type ).apply( reference, result );
+      } else {
+        result = (R) create( reference, type, owningType );
       }
+      
+      if( jcxReference.useOriginalNode() == JcxReference.UseOriginalNode.after ) {
+        result = createLoader( type ).apply( node, result );
+      }
+      
     }
     return result;
   }

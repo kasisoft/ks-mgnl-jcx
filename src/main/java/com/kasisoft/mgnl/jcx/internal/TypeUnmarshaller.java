@@ -8,6 +8,7 @@ import com.kasisoft.libs.common.text.*;
 
 import com.kasisoft.libs.common.function.*;
 import com.kasisoft.mgnl.jcx.*;
+import com.kasisoft.mgnl.jcx.JcxReference.*;
 import com.kasisoft.mgnl.util.*;
 
 import javax.annotation.*;
@@ -54,7 +55,7 @@ public class TypeUnmarshaller<R> {
   String                                refProperty;
   
   // decide whether the referred property will be processed before or after the current node
-  boolean                               before;
+  JcxReference.UseOriginalNode          useOriginalNode;
   
   TriConsumer<Node, String, String>     unsatisfiedRequireHandler;
   
@@ -119,21 +120,31 @@ public class TypeUnmarshaller<R> {
       
       log.trace( msg_applying_node_to_destination.format( NodeFunctions.getPath( jcrNode ), destination ) );
       
-      Node refNode = getRefNode( jcrNode );
-      
-      if( (refNode != null) && before ) {
-        // if there's a reference we're using the target as an additional source
-        descriptions.forEach( $ -> apply( refNode, destination, $ ) );
-      }
-      
-      // apply the values for each property first
-      descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
-      
-      if( (refNode != null) && (! before) ) {
-        // if there's a reference we're using the target as an additional source
-        descriptions.forEach( $ -> apply( refNode, destination, $ ) );
-      }
+      if( useOriginalNode != null ) {
+        
+        Node refNode = getRefNode( jcrNode );
+        if( useOriginalNode == UseOriginalNode.before ) {
+          System.err.println( "before: " + jcrNode );
+          // apply the values for each property first
+          descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
+        }
+        
+        if( refNode != null ) {
+          System.err.println( "ref: " + refNode );
+          // if there's a reference we're using the target as an additional source
+          descriptions.forEach( $ -> apply( refNode, destination, $ ) );
+        }
 
+        if( useOriginalNode == UseOriginalNode.after ) {
+          System.err.println( "after: " + jcrNode );
+          // apply the values for each property first
+          descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
+        }
+        
+      } else {
+        descriptions.forEach( $ -> apply( jcrNode, destination, $ ) );
+      }
+      
       // let the post process run if some has been configured
       postprocess.accept( destination );
       

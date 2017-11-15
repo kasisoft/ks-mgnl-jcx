@@ -1,6 +1,7 @@
 package com.kasisoft.mgnl.jcx.unmarshaller;
 
 import com.kasisoft.mgnl.jcx.*;
+import com.kasisoft.mgnl.jcx.JcxReference.*;
 import com.kasisoft.mgnl.versionhandler.*;
 
 import org.testng.annotations.*;
@@ -24,7 +25,7 @@ public class JcxReferenceTest extends AbstractJcxUnmarshaller {
     expected1.setTitle( "lila" );
 
     ReferenceWithoutRefProperty expected2 = new ReferenceWithoutRefProperty();
-    expected2.setTitle( "fry" );
+    expected2.setTitle( "zoidberg" );
 
     ReferenceWithoutRefProperty expected3 = new ReferenceWithoutRefProperty();
     expected3.setTitle( "zoidberg" );
@@ -67,7 +68,7 @@ public class JcxReferenceTest extends AbstractJcxUnmarshaller {
     expected1.setTitle( "lila" );
 
     ReferenceWithRefProperty expected2 = new ReferenceWithRefProperty();
-    expected2.setTitle( "fry" );
+    expected2.setTitle( "zoidberg" );
 
     ReferenceWithRefProperty expected3 = new ReferenceWithRefProperty();
     expected3.setTitle( "zoidberg" );
@@ -145,10 +146,10 @@ public class JcxReferenceTest extends AbstractJcxUnmarshaller {
 
   }
   
-  @Getter @Setter
+  @Getter @Setter @ToString
   @EqualsAndHashCode
   @FieldDefaults(level = AccessLevel.PRIVATE)
-  @JcxReference("wuppiWs")
+  @JcxReference(value = "wuppiWs", useOriginalNode = UseOriginalNode.before)
   public static final class ReferenceWithoutRefProperty {
     
     @XmlAttribute
@@ -159,10 +160,10 @@ public class JcxReferenceTest extends AbstractJcxUnmarshaller {
 
   } /* ENCLASS */
   
-  @Getter @Setter
+  @Getter @Setter @ToString
   @EqualsAndHashCode
   @FieldDefaults(level = AccessLevel.PRIVATE)
-  @JcxReference(value = "wuppiWs", before = false)
+  @JcxReference(value = "wuppiWs", useOriginalNode = UseOriginalNode.after)
   public static final class ReferenceWithoutRefPropertyAfter {
     
     @XmlAttribute
@@ -173,10 +174,10 @@ public class JcxReferenceTest extends AbstractJcxUnmarshaller {
 
   } /* ENCLASS */
   
-  @Getter @Setter
+  @Getter @Setter @ToString
   @EqualsAndHashCode
   @FieldDefaults(level = AccessLevel.PRIVATE)
-  @JcxReference(value = "wuppiWs", property = "pointer")
+  @JcxReference(value = "wuppiWs", property = "pointer", useOriginalNode = UseOriginalNode.before)
   public static final class ReferenceWithRefProperty {
     
     @XmlAttribute

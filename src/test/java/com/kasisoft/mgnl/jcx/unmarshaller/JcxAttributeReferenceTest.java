@@ -1,6 +1,7 @@
 package com.kasisoft.mgnl.jcx.unmarshaller;
 
 import com.kasisoft.mgnl.jcx.*;
+import com.kasisoft.mgnl.jcx.JcxReference.*;
 import com.kasisoft.mgnl.versionhandler.*;
 
 import org.testng.annotations.*;
@@ -28,7 +29,7 @@ public class JcxAttributeReferenceTest extends AbstractJcxUnmarshaller {
     expected1.setPointer( targetedNodeUuid1 );
 
     PojoType                 pojotype2 = new PojoType();
-    pojotype2.setTitle( "amy" );
+    pojotype2.setTitle( "fry" );
     pojotype2.setValue( 30 );
     ReferenceWithRefProperty expected2 = new ReferenceWithRefProperty();
     expected2.setPojo( pojotype2 );
@@ -36,7 +37,7 @@ public class JcxAttributeReferenceTest extends AbstractJcxUnmarshaller {
 
     PojoType                 pojotype3 = new PojoType();
     pojotype3.setTitle( "lila" );
-    pojotype3.setValue( 40 );
+    pojotype3.setValue( 70 );
     ReferenceWithRefProperty expected3 = new ReferenceWithRefProperty();
     expected3.setPojo( pojotype3 );
     expected3.setPointer( targetedNodeUuid3 );
@@ -84,7 +85,7 @@ public class JcxAttributeReferenceTest extends AbstractJcxUnmarshaller {
     expected1.setPointer( targetedNodeUuid1 );
 
     PojoType                 pojotype2 = new PojoType();
-    pojotype2.setTitle( "fry" );
+    pojotype2.setTitle( "amy" );
     pojotype2.setValue( 30 );
     ReferenceWithRefPropertyAfter expected2 = new ReferenceWithRefPropertyAfter();
     expected2.setPojo( pojotype2 );
@@ -92,7 +93,7 @@ public class JcxAttributeReferenceTest extends AbstractJcxUnmarshaller {
 
     PojoType                 pojotype3 = new PojoType();
     pojotype3.setTitle( "lila" );
-    pojotype3.setValue( 70 );
+    pojotype3.setValue( 40 );
     ReferenceWithRefPropertyAfter expected3 = new ReferenceWithRefPropertyAfter();
     expected3.setPojo( pojotype3 );
     expected3.setPointer( targetedNodeUuid3 );
@@ -128,13 +129,12 @@ public class JcxAttributeReferenceTest extends AbstractJcxUnmarshaller {
     
   }
   
-  @Getter @Setter
-  @ToString
+  @Getter @Setter @ToString
   @EqualsAndHashCode
   @FieldDefaults(level = AccessLevel.PRIVATE)
   public static final class ReferenceWithRefProperty {
     
-    @JcxReference(value = "wuppiWs", property = "pointer")
+    @JcxReference(value = "wuppiWs", property = "pointer", useOriginalNode = UseOriginalNode.before)
     PojoType    pojo;
 
     // default name used for the referring property
@@ -143,13 +143,12 @@ public class JcxAttributeReferenceTest extends AbstractJcxUnmarshaller {
 
   } /* ENCLASS */
   
-  @Getter @Setter
-  @ToString
+  @Getter @Setter @ToString
   @EqualsAndHashCode
   @FieldDefaults(level = AccessLevel.PRIVATE)
   public static final class ReferenceWithRefPropertyAfter {
     
-    @JcxReference(value = "wuppiWs", property = "pointer", before = false)
+    @JcxReference(value = "wuppiWs", property = "pointer", useOriginalNode = UseOriginalNode.after)
     PojoType    pojo;
 
     // default name used for the referring property
@@ -158,8 +157,7 @@ public class JcxAttributeReferenceTest extends AbstractJcxUnmarshaller {
 
   } /* ENCLASS */
 
-  @Getter @Setter
-  @ToString
+  @Getter @Setter @ToString
   @EqualsAndHashCode
   @FieldDefaults(level = AccessLevel.PRIVATE)
   public static final class PojoType {

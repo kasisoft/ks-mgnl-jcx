@@ -13,11 +13,17 @@ import java.lang.annotation.*;
 @Retention(RUNTIME)
 @Target({TYPE, FIELD})
 public @interface JcxReference {
+  
+  enum UseOriginalNode {
+    dont,
+    before,
+    after;
+  }
 
   String value() default RepositoryConstants.WEBSITE;
   
   String property() default "target";
   
-  boolean before() default true;
+  UseOriginalNode useOriginalNode() default UseOriginalNode.dont;
   
 } /* ENDANNOTATION */
