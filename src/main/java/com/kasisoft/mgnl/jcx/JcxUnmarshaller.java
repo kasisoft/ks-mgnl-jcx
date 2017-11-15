@@ -328,7 +328,7 @@ public class JcxUnmarshaller {
         .collect( Collectors.toList() );
       
       for( PropertyDescription property : properties ) {
-        if( isAttribute( property ) ) {
+        if( property.isAttribute() ) {
           // @XmlAttribute
           if( property.getCollectionType() != null ) {
             // we're dealing with a collection here
@@ -502,17 +502,17 @@ public class JcxUnmarshaller {
     if( reference != null ) {
       // init before using the node
       if( jcxReference.before() ) {
-        result = (R) create( node, type, owningType );
+        result = (R) create( reference, type, owningType );
       }
       // load the data of the referred node
       if( result != null ) {
-        result = createLoader( type ).apply( reference, result );
+        result = createLoader( type ).apply( node, result );
       } else {
-        result = (R) create( reference, type, owningType );
+        result = (R) create( node, type, owningType );
       }
       // override settings using the node
       if( ! jcxReference.before() ) {
-        result = createLoader( type ).apply( node, result );
+        result = createLoader( type ).apply( reference, result );
       }
     }
     return result;
@@ -578,7 +578,10 @@ public class JcxUnmarshaller {
   }
 
   private synchronized boolean isNotTransient( PropertyDescription description ) {
-    boolean result = (description.getField().getAnnotation( XmlTransient.class ) == null) && (description.getJcxRef() == null);
+    boolean result = (description.getField().getAnnotation( XmlTransient.class ) == null);
+    if( ! result ) {
+      result = description.getJcxRef() != null;
+    }
     if( result && (! xmlTransientProperties.isEmpty()) && xmlTransientPropertyNames.contains( description.getPropertyName() ) ) {
       // this property has been registered as XmlTransient by default. this is helpful to disable properties
       // of classes which aren't under our control so we can't mark them explicitly as xml transient
@@ -629,11 +632,6 @@ public class JcxUnmarshaller {
     XmlElementWrapper xmlWrapper  = description.getField().getAnnotation( XmlElementWrapper.class );
     JcxReference      jcxRef      = description.getJcxRef();
     return (xmlAttr != null) || (xmlElem != null) || (xmlWrapper != null) || (jcxRef != null);
-  }
-  
-  private synchronized boolean isAttribute( PropertyDescription description ) {
-    XmlAttribute xmlAttr = description.getField().getAnnotation( XmlAttribute.class );
-    return xmlAttr != null;
   }
   
   private synchronized List<PropertyDescription> introspect( Class<?> type ) throws NoSuchMethodException, SecurityException {

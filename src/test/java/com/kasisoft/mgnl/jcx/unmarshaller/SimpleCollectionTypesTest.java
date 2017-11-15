@@ -72,6 +72,7 @@ public class SimpleCollectionTypesTest extends AbstractJcxUnmarshaller {
   }
 
   @Getter @Setter
+  @ToString
   @EqualsAndHashCode
   @FieldDefaults(level = AccessLevel.PRIVATE)
   public static final class SimpleCollectionTypes {

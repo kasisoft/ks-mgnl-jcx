@@ -3,6 +3,7 @@ package com.kasisoft.mgnl.jcx.internal;
 import com.kasisoft.mgnl.jcx.*;
 
 import javax.jcr.*;
+import javax.xml.bind.annotation.*;
 import javax.xml.bind.annotation.adapters.*;
 
 import java.lang.reflect.*;
@@ -56,4 +57,8 @@ public final class PropertyDescription {
   // possibility to use referenced nodes as a source
   JcxReference                              jcxRef = null;
   
+  public boolean isAttribute() {
+    return getField().getAnnotation( XmlAttribute.class ) != null;
+  }
+
 } /* ENDCLASS */

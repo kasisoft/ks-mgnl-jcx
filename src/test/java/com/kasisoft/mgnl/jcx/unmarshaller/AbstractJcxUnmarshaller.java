@@ -24,7 +24,9 @@ public class AbstractJcxUnmarshaller {
   
   MockSession              biboSession;
   MockSession              wuppiSession;
-  String                   targetedNodeUuid;
+  String                   targetedNodeUuid1;
+  String                   targetedNodeUuid2;
+  String                   targetedNodeUuid3;
   ExtendedMockWebContext   context;
   
   protected ExtendedMockWebContext.ExtendedMockWebContextBuilder newWebContextBuilder() {
@@ -34,7 +36,7 @@ public class AbstractJcxUnmarshaller {
   }
   
   protected String getTargetNodeUuid() {
-    return targetedNodeUuid;
+    return targetedNodeUuid1;
   }
   
   protected MockSession getBiboSession() {
@@ -64,11 +66,23 @@ public class AbstractJcxUnmarshaller {
     TreeBuilder tb = new TreeBuilder()
       .sContentNode( "targetedNode" )
         .property( "title", "zoidberg" )
-      .sEnd();
+        .property( "value", 120 )
+      .sEnd()
+      .sContentNode( "targetedNode2" )
+        .property( "title", "fry" )
+        .property( "value", 30 )
+      .sEnd()
+      .sContentNode( "targetedNode3" )
+        .property( "title", "lila" )
+        .property( "value", 70 )
+      .sEnd()
+      ;
     
     tb.build( new MockNodeProducer( wuppiSession ) );
     
-    targetedNodeUuid = SessionUtil.getNode( wuppiSession, "/targetedNode" ).getIdentifier();
+    targetedNodeUuid1 = SessionUtil.getNode( wuppiSession, "/targetedNode" ).getIdentifier();
+    targetedNodeUuid2 = SessionUtil.getNode( wuppiSession, "/targetedNode2" ).getIdentifier();
+    targetedNodeUuid3 = SessionUtil.getNode( wuppiSession, "/targetedNode3" ).getIdentifier();
     
   }
   

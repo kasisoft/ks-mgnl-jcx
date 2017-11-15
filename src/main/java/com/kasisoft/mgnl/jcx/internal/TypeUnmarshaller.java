@@ -202,7 +202,10 @@ public class TypeUnmarshaller<R> {
   }
   
   private void apply( Node jcrNode, R destination, PropertyDescription desc ) {
-    Object value = desc.getLoader().apply( jcrNode, desc.getPropertyName() );
+    Object value = null;
+    if( hasValue( jcrNode, desc ) ) {
+      value = desc.getLoader().apply( jcrNode, desc.getPropertyName() );
+    }
     if( value != null ) {
       try {
         desc.getSetter().invoke( destination, value );
@@ -213,6 +216,31 @@ public class TypeUnmarshaller<R> {
       unsatisfiedRequireHandler.accept( jcrNode, desc.getOwningType().getName(), desc.getPropertyName() );
     }
   }
+  
+  private boolean hasValue( Node jcrNode, PropertyDescription desc ) {
+    try {
+      boolean result = true;
+      if( desc.isAttribute() ) {
+        if( desc.getCollectionType() != null ) {
+          result                    = false;
+          PropertyIterator iterator = jcrNode.getProperties();
+          while( iterator.hasNext() ) {
+            String name = iterator.nextProperty().getName();
+            if( name.startsWith( desc.getPropertyName() ) ) {
+              result = true;
+              break;
+            }
+          }
+        } else {
+          result = jcrNode.hasProperty( desc.getPropertyName() );
+        }
+      }
+      return result;
+    } catch( Exception ex ) {
+      throw JcxException.wrap( ex );
+    }
+  }
+  
   
   /**
    * Like {@link #apply(Node, Object)} but with the difference that the data is being loaded from a subnode.

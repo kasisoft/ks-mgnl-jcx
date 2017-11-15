@@ -35,10 +35,10 @@ public class JcxReferenceTest extends AbstractJcxUnmarshaller {
       .sEnd()
       .sContentNode( "referenceWithoutRefProperty2" )
         .property( "title" , expected2.getTitle() )
-        .property( "target", targetedNodeUuid )
+        .property( "target", targetedNodeUuid1 )
       .sEnd()
       .sContentNode( "referenceWithoutRefProperty3" )
-        .property( "target", targetedNodeUuid )
+        .property( "target", targetedNodeUuid1 )
       .sEnd();
       ;
     
@@ -78,10 +78,10 @@ public class JcxReferenceTest extends AbstractJcxUnmarshaller {
       .sEnd()
       .sContentNode( "referenceWithRefProperty2" )
         .property( "title" , expected2.getTitle() )
-        .property( "pointer", targetedNodeUuid )
+        .property( "pointer", targetedNodeUuid1 )
       .sEnd()
       .sContentNode( "referenceWithRefProperty3" )
-        .property( "pointer", targetedNodeUuid )
+        .property( "pointer", targetedNodeUuid1 )
       .sEnd();
       ;
     
@@ -121,10 +121,10 @@ public class JcxReferenceTest extends AbstractJcxUnmarshaller {
       .sEnd()
       .sContentNode( "referenceWithoutRefPropertyAfter2" )
         .property( "title" , expected2.getTitle() )
-        .property( "target", targetedNodeUuid )
+        .property( "target", targetedNodeUuid1 )
       .sEnd()
       .sContentNode( "referenceWithoutRefPropertyAfter3" )
-        .property( "target", targetedNodeUuid )
+        .property( "target", targetedNodeUuid1 )
       .sEnd();
       ;
     
