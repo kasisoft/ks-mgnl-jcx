@@ -12,11 +12,11 @@
   <packaging>jar</packaging>
   
   <groupId>com.kasisoft.mgnl</groupId>
-  <artifactId>com.kasisoft.mgnl.jcx</artifactId>
-  <version>0.2-SNAPSHOT</version>
+  <artifactId>ks-mgnl-jcx</artifactId>
+  <version>0.3-SNAPSHOT</version>
 
   <name>MGNL :: JCR Xml Binding</name>
-  <url>https://kasisoft.com/bitbucket/projects/MGNL/repos/com.kasisoft.mgnl.jcx</url>
+  <url>https://kasisoft.com/bitbucket/projects/MGNL/repos/ks-mgnl-jcx</url>
   <description>Support of JAXB annotations to access JCR data.</description>
   
   <licenses>
@@ -32,9 +32,9 @@
   </organization>
   
   <scm>
-    <url>https://kasisoft.com/bitbucket/projects/MGNL/repos/com.kasisoft.mgnl.jcx</url>
-    <connection>scm:git:ssh://kasisoft.com:7999/mgnl/com.kasisoft.mgnl.jcx.git</connection>
-    <developerConnection>scm:git:ssh://kasisoft.com:7999/mgnl/com.kasisoft.mgnl.jcx.git</developerConnection>
+    <url>https://kasisoft.com/bitbucket/projects/MGNL/repos/ks-mgnl-jcx</url>
+    <connection>scm:git:ssh://kasisoft.com:7999/mgnl/ks-mgnl-jcx.git</connection>
+    <developerConnection>scm:git:ssh://kasisoft.com:7999/mgnl/ks-mgnl-jcx.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
   
@@ -45,7 +45,7 @@
   
   <ciManagement>
     <system>Jenkins</system>
-    <url>https://kasisoft.com/jenkins/job/mgnl.com.kasisoft.mgnl.jcx/</url>
+    <url>https://kasisoft.com/jenkins/job/mgnl.ks-mgnl-jcx/</url>
   </ciManagement>
   
   <developers>
@@ -61,8 +61,8 @@
     <!-- versioning: dependencies -->
     <version-kcl>2.8</version-kcl>
     <version-magnolia>5.5.6-SNAPSHOT</version-magnolia>
-    <version-mgnl-util>0.4-SNAPSHOT</version-mgnl-util>
-    <version-mgnl-versionhandler>0.3-SNAPSHOT</version-mgnl-versionhandler>
+    <version-mgnl-util>0.5-SNAPSHOT</version-mgnl-util>
+    <version-mgnl-versionhandler>0.4-SNAPSHOT</version-mgnl-versionhandler>
     <version-tomcat>8.5.20</version-tomcat>
     
     <!-- versioning: plugins -->
@@ -115,12 +115,12 @@
     </dependency>
     <dependency>
       <groupId>com.kasisoft.mgnl</groupId>
-      <artifactId>com.kasisoft.mgnl.versionhandler</artifactId>
+      <artifactId>ks-mgnl-versionhandler</artifactId>
       <version>${version-mgnl-versionhandler}</version>
     </dependency>
     <dependency>
       <groupId>com.kasisoft.mgnl</groupId>
-      <artifactId>com.kasisoft.mgnl.versionhandler</artifactId>
+      <artifactId>ks-mgnl-versionhandler</artifactId>
       <version>${version-mgnl-versionhandler}</version>
       <type>test-jar</type>
       <scope>test</scope>
@@ -131,7 +131,7 @@
     </dependency>
     <dependency>
       <groupId>com.kasisoft.mgnl</groupId>
-      <artifactId>com.kasisoft.mgnl.util</artifactId>
+      <artifactId>ks-mgnl-util</artifactId>
       <version>${version-mgnl-util}</version>
     </dependency>
     <dependency>

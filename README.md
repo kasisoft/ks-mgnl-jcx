@@ -8,8 +8,8 @@ JCR data structure is therefore mostly hidden.
 
 * [eMail: daniel.kasmeroglu@kasisoft.net](mailto:daniel.kasmeroglu@kasisoft.net)
 * [Jira](https://kasisoft.com/jira/projects/MGNLJCX)
-* [Jenkins](https://kasisoft.com/jenkins/job/mgnl.com.kasisoft.mgnl.jcx)
-* [GIT](https://kasisoft.com/bitbucket/projects/MGNL/repos/com.kasisoft.mgnl.jcx)
+* [Jenkins](https://kasisoft.com/jenkins/job/mgnl.ks-mgnl-jcx)
+* [GIT](https://kasisoft.com/bitbucket/projects/MGNL/repos/ks-mgnl-jcx)
 
 
 # Development Setup
@@ -31,8 +31,8 @@ I assume that you're familiar with Maven. If not I suggest to visit the followin
 
      <dependency>
          <groupId>com.kasisoft.mgnl</groupId>
-         <artifactId>com.kasisoft.mgnl.jcx</artifactId>
-         <version>0.1</version>
+         <artifactId>ks-mgnl-jcx</artifactId>
+         <version>0.2</version>
      </dependency>
 
 
@@ -42,7 +42,7 @@ Snapshots can be used while accessing a dedicated maven repository. Your POM nee
 
      <dependency>
          <groupId>com.kasisoft.mgnl</groupId>
-         <artifactId>com.kasisoft.mgnl.jcx</artifactId>
+         <artifactId>ks-mgnl-jcx</artifactId>
          <version>0.2-SNAPSHOT</version>
      </dependency>
      
