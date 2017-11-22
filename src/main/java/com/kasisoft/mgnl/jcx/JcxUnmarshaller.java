@@ -4,6 +4,8 @@ import static com.kasisoft.mgnl.jcx.internal.Messages.*;
 
 import info.magnolia.context.*;
 
+import info.magnolia.jcr.*;
+
 import com.kasisoft.libs.common.text.*;
 
 import com.kasisoft.libs.common.annotation.*;
@@ -63,6 +65,7 @@ public class JcxUnmarshaller {
   Function<String, String>                                        fieldNameGenerator;
   Map<Class<?>, TypeUnmarshaller>                                 unmarshallers;
   Map<Class<?>, BiFunction<Node, String, ?>>                      attributeLoaders;
+  Map<String, BiFunction<Node, String, ?>>                        metaAttributeLoaders;
   Map<Class<? extends XmlAdapter>, BiFunction<Node, String, ?>>   xmlAdapterLoaders;
   TriConsumer<Node, String, String>                               unsatisfiedRequireHandler;
   Map<Class<?>, Set<String>>                                      xmlTransientProperties;
@@ -77,6 +80,7 @@ public class JcxUnmarshaller {
     xmlTransientProperties    = new HashMap<>();
     xmlTransientPropertyNames = new HashSet<>();
     attributeLoaders          = setupAttributeLoaders();
+    metaAttributeLoaders      = setupMetaAttributeLoaders();
     unsatisfiedRequireHandler = null;
   }
   
@@ -193,6 +197,57 @@ public class JcxUnmarshaller {
     
     return result;
     
+  }
+
+  protected synchronized Map<String, BiFunction<Node, String, ?>> setupMetaAttributeLoaders() {
+    Map<String, BiFunction<Node, String, ?>> result = new HashMap<>();
+    result.put( "@depth"      , this::getMetaDepth      );
+    result.put( "@uuid"       , this::getMetaIdentifier );
+    result.put( "@identifier" , this::getMetaIdentifier );
+    result.put( "@name"       , this::getMetaName       );
+    result.put( "@path"       , this::getMetaPath       );
+    result.put( "@nodeType"   , this::getMetaNodeType   );
+    return result;
+  }
+
+  private String getMetaNodeType( Node node, String attribute ) {
+    try {
+      return node.getPrimaryNodeType().getName();
+    } catch( RepositoryException ex ) {
+      throw new RuntimeRepositoryException(ex);
+    }
+  }
+
+  private String getMetaPath( Node node, String attribute ) {
+    try {
+      return node.getPath();
+    } catch( RepositoryException ex ) {
+      throw new RuntimeRepositoryException(ex);
+    }
+  }
+
+  private String getMetaName( Node node, String attribute ) {
+    try {
+      return node.getName();
+    } catch( RepositoryException ex ) {
+      throw new RuntimeRepositoryException(ex);
+    }
+  }
+
+  private String getMetaIdentifier( Node node, String attribute ) {
+    try {
+      return node.getIdentifier();
+    } catch( RepositoryException ex ) {
+      throw new RuntimeRepositoryException(ex);
+    }
+  }
+
+  private int getMetaDepth( Node node, String attribute ) {
+    try {
+      return node.getDepth();
+    } catch( RepositoryException ex ) {
+      throw new RuntimeRepositoryException(ex);
+    }
   }
   
   /**
@@ -345,6 +400,8 @@ public class JcxUnmarshaller {
               property.setLoader( getAttributeLoader( property.getType() ) );
             }
           }
+        } else if( property.isMetaAttribute() ) {
+          property.setLoader( metaAttributeLoaders.get( property.getPropertyName() ) );
         } else if( property.getJcxRef() != null ) {
           property.setLoader( ($1, $2) -> getElementByReference( $1, $2, type, property.getType(), property.getJcxRef() ) );
         } else if( property.getCollectionType() != null ) {

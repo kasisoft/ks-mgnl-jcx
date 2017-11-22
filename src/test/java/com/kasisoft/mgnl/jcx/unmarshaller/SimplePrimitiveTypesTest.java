@@ -5,6 +5,7 @@ import com.kasisoft.mgnl.versionhandler.*;
 
 import org.testng.annotations.*;
 
+import javax.jcr.*;
 import javax.xml.bind.annotation.*;
 
 import lombok.experimental.*;
@@ -50,12 +51,39 @@ public class SimplePrimitiveTypesTest extends AbstractJcxUnmarshaller {
     assertCreations( unmarshaller, SimplePrimitiveTypes.class, "simplePrimitiveTypes", expected );
 
   }
+  
+  @Test
+  public void simpleMetaData() throws Exception {
+    
+    // setup the data
+    SimpleMetaData expected = new SimpleMetaData();
+    
+    TreeBuilder tb = new TreeBuilder()
+      .sContentNode( "simpleMetaData" )
+      .sEnd();
+    
+    tb.build( new MockNodeProducer( biboSession ) );
+    
+    Node node = biboSession.getRootNode().getNode( "simpleMetaData" );
+    expected.setVarIdentifier( node.getIdentifier() );
+    expected.setVarUuid( node.getIdentifier() );
+    expected.setVarDepth(1);
+    expected.setVarName( "simpleMetaData" );
+    expected.setVarPath( "/simpleMetaData" );
+    expected.setVarNodeType( "mgnl:contentNode" );
+
+    // run the tests
+    JcxUnmarshaller unmarshaller = new JcxUnmarshaller();
+    
+    assertCreations( unmarshaller, SimpleMetaData.class, "simpleMetaData", expected );
+
+  }
 
   /**
    * @author daniel.kasmeroglu@kasisoft.net
    */
   @Getter @Setter
-  @EqualsAndHashCode
+  @EqualsAndHashCode @ToString
   @FieldDefaults(level = AccessLevel.PRIVATE)
   public static final class SimplePrimitiveTypes {
     
@@ -86,6 +114,34 @@ public class SimplePrimitiveTypesTest extends AbstractJcxUnmarshaller {
     @XmlAttribute
     int         willStayTheSameAsThereIsNoJcrProperty = 34;
 
+  } /* ENCLASS */
+
+  /**
+   * @author daniel.kasmeroglu@kasisoft.net
+   */
+  @Getter @Setter 
+  @EqualsAndHashCode @ToString
+  @FieldDefaults(level = AccessLevel.PRIVATE)
+  public static final class SimpleMetaData {
+    
+    @XmlAttribute(name = "@identifier")
+    String      varIdentifier;
+    
+    @XmlAttribute(name = "@uuid")
+    String      varUuid;
+    
+    @XmlAttribute(name = "@depth")
+    int         varDepth;
+    
+    @XmlAttribute(name = "@name")
+    String      varName;
+
+    @XmlAttribute(name = "@path")
+    String      varPath;
+
+    @XmlAttribute(name = "@nodeType")
+    String      varNodeType;
+    
   } /* ENCLASS */
 
 } /* ENDCLASS */

@@ -10,6 +10,8 @@ import java.lang.reflect.*;
 
 import java.util.function.*;
 
+import java.util.*;
+
 import lombok.experimental.*;
 
 import lombok.*;
@@ -22,6 +24,10 @@ import lombok.*;
 @Getter @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public final class PropertyDescription {
+
+  private static final Set<String> META_ATTRIBUTES = new HashSet<>( Arrays.asList(
+    "@depth", "@uuid", "@identifier", "@name", "@path", "@nodeType"
+  ) );
 
   // the class the property belongs to
   Class<?>                                  owningType;
@@ -58,7 +64,11 @@ public final class PropertyDescription {
   JcxReference                              jcxRef = null;
   
   public boolean isAttribute() {
-    return getField().getAnnotation( XmlAttribute.class ) != null;
+    return (getField().getAnnotation( XmlAttribute.class ) != null) && (!isMetaAttribute());
+  }
+  
+  public boolean isMetaAttribute() {
+    return META_ATTRIBUTES.contains( propertyName );
   }
 
 } /* ENDCLASS */

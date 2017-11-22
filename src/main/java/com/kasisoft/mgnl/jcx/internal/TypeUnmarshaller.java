@@ -213,6 +213,8 @@ public class TypeUnmarshaller<R> {
     Object value = null;
     if( hasValue( jcrNode, desc ) ) {
       value = desc.getLoader().apply( jcrNode, desc.getPropertyName() );
+    } else if( desc.isMetaAttribute() ) {
+      value = desc.getLoader().apply( jcrNode, desc.getPropertyName() );
     }
     if( value != null ) {
       try {
@@ -248,8 +250,7 @@ public class TypeUnmarshaller<R> {
       throw JcxException.wrap( ex );
     }
   }
-  
-  
+
   /**
    * Like {@link #apply(Node, Object)} but with the difference that the data is being loaded from a subnode.
    * 
