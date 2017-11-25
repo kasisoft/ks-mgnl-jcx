@@ -63,7 +63,7 @@
     <version-magnolia>5.6-0-SNAPSHOT</version-magnolia>
     <version-mgnl-util>0.5-SNAPSHOT</version-mgnl-util>
     <version-mgnl-versionhandler>0.4-SNAPSHOT</version-mgnl-versionhandler>
-    <version-tomcat>8.5.20</version-tomcat>
+    <version-tomcat>9.0.1</version-tomcat>
     
     <!-- versioning: plugins -->
     <plugin-version-jacoco>0.7.9</plugin-version-jacoco>
