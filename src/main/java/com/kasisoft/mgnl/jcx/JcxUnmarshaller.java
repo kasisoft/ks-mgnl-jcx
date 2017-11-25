@@ -185,6 +185,8 @@ public class JcxUnmarshaller {
     result.put( Float     . TYPE , PropertyLoaders::toFloat       );
     result.put( Double    . TYPE , PropertyLoaders::toDouble      );
 
+    result.put( Calendar  . class, PropertyLoaders::toCalendar    );
+    result.put( Date      . class, PropertyLoaders::toDate        );
     result.put( Boolean   . class, PropertyLoaders::toBoolean     );
     result.put( Character . class, PropertyLoaders::toCharacter   );
     result.put( Byte      . class, PropertyLoaders::toByte        );
