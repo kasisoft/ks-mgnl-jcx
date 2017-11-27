@@ -6,7 +6,10 @@ import com.kasisoft.mgnl.versionhandler.*;
 
 import org.testng.annotations.*;
 
+import javax.jcr.*;
 import javax.xml.bind.annotation.*;
+
+import java.util.function.*;
 
 import lombok.experimental.*;
 
@@ -129,6 +132,41 @@ public class JcxAttributeReferenceTest extends AbstractJcxUnmarshaller {
     
   }
   
+  @Test
+  public void withReferredNode() throws Exception {
+    
+    // setup the data
+    TreeBuilder tb = new TreeBuilder()
+      .sContentNode( "referenceWithRefProperty1" )
+        .property( "pointer", targetedNodeUuid1 )
+      .sEnd()
+      .sContentNode( "referenceWithRefProperty2" )
+        .property( "title" , "amy" )
+        .property( "pointer", targetedNodeUuid2 )
+      .sEnd()
+      .sContentNode( "referenceWithRefProperty3" )
+        .property( "pointer", targetedNodeUuid3 )
+        .property( "value"  , 40 )
+      .sEnd();
+      ;
+    
+    tb.build( new MockNodeProducer( biboSession ) );
+
+    // run the tests
+    
+    JcxUnmarshaller unmarshaller = new JcxUnmarshaller();
+    
+    // the title/value comes from the content node
+    assertNodes( unmarshaller, ReferenceNode.class, "referenceWithRefProperty1" );
+
+    // the target has a title, but the title of current node overrules it (JcxReference.before = true)
+    assertNodes( unmarshaller, ReferenceNode.class, "referenceWithRefProperty2" );
+
+    // the current node has no title, so use the title from the target
+    assertNodes( unmarshaller, ReferenceNode.class, "referenceWithRefProperty3" );
+    
+  }
+  
   @Getter @Setter @ToString
   @EqualsAndHashCode
   @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -157,6 +195,24 @@ public class JcxAttributeReferenceTest extends AbstractJcxUnmarshaller {
 
   } /* ENCLASS */
 
+  @Getter @Setter @ToString
+  @EqualsAndHashCode
+  @FieldDefaults(level = AccessLevel.PRIVATE)
+  public static final class ReferenceNode implements Supplier<Node> {
+    
+    @JcxReference(value = "wuppiWs", property = "pointer")
+    Node        referred;
+
+    // default name used for the referring property
+    @XmlAttribute
+    String      pointer;
+    
+    public Node get() {
+      return referred;
+    }
+
+  } /* ENCLASS */
+  
   @Getter @Setter @ToString
   @EqualsAndHashCode
   @FieldDefaults(level = AccessLevel.PRIVATE)

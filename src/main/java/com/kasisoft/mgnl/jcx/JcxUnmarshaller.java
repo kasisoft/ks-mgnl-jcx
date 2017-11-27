@@ -459,20 +459,30 @@ public class JcxUnmarshaller {
           Node       containerNode = node.getNode( subProperty );
           List<Node> nodes         = getNodes( containerNode );
           if( ! nodes.isEmpty() ) {
-            Function<Node, R> creator = createCreator( type, owningType );
-            result                    = nodes.stream()
-              .map( creator::apply )
-              .collect( Collectors.toList() );
+            if( Node.class.isAssignableFrom( type ) ) {
+              result = (List<R>) nodes;
+            } else {
+              Function<Node, R> creator = createCreator( type, owningType );
+              result                    = nodes.stream()
+                  .map( creator::apply )
+                  .collect( Collectors.toList() );
+            }
             
           }
         }
       } else {
         List<String> names  = getNodeNames( node, nodeName );
         if( ! names.isEmpty() ) {
-          BiFunction<Node, String, R> subloader = createSubnodeCreator( type, owningType );
-          result = names.stream()
-            .map( $ -> subloader.apply( node, $ ) )
-            .collect( Collectors.toList() );
+          if( Node.class.isAssignableFrom( type ) ) {
+            result = (List<R>) names.stream()
+              .map( $ -> NodeFunctions.getNode( node, $ ) )
+              .collect( Collectors.toList() );
+          } else {
+            BiFunction<Node, String, R> subloader = createSubnodeCreator( type, owningType );
+            result = names.stream()
+                .map( $ -> subloader.apply( node, $ ) )
+                .collect( Collectors.toList() );
+          }
         }
       }
       for( int i = result.size() - 1; i >= 0; i-- ) {
@@ -560,19 +570,25 @@ public class JcxUnmarshaller {
     Node    reference = getReferredNode( getAttributeLoader( String.class ).apply( node, jcxReference.property() ), jcxReference ); 
     if( reference != null ) {
       
-      if( jcxReference.useOriginalNode() == JcxReference.UseOriginalNode.before ) {
-        result = (R) create( node, type, owningType );
-      }
-
-      // load the data of the referred node
-      if( result != null ) {
-        result = createLoader( type ).apply( reference, result );
+      if( Node.class.isAssignableFrom( type ) ) {
+        result = (R) reference;
       } else {
-        result = (R) create( reference, type, owningType );
-      }
-      
-      if( jcxReference.useOriginalNode() == JcxReference.UseOriginalNode.after ) {
-        result = createLoader( type ).apply( node, result );
+        
+        if( jcxReference.useOriginalNode() == JcxReference.UseOriginalNode.before ) {
+          result = (R) create( node, type, owningType );
+        }
+        
+        // load the data of the referred node
+        if( result != null ) {
+          result = createLoader( type ).apply( reference, result );
+        } else {
+          result = (R) create( reference, type, owningType );
+        }
+        
+        if( jcxReference.useOriginalNode() == JcxReference.UseOriginalNode.after ) {
+          result = createLoader( type ).apply( node, result );
+        }
+        
       }
       
     }
@@ -617,7 +633,11 @@ public class JcxUnmarshaller {
     R    result   = null;
     Node dataNode = getNode( node, nodeName );
     if( dataNode != null ) {
-      result = (R) create( dataNode, type, owningType );
+      if( Node.class.isAssignableFrom( type ) ) {
+        result = (R) dataNode;
+      } else {
+        result = (R) create( dataNode, type, owningType );
+      }
     }
     return result;
   }

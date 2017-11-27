@@ -14,6 +14,12 @@ import com.kasisoft.mgnl.versionhandler.*;
 
 import org.testng.annotations.*;
 
+import javax.jcr.*;
+
+import java.util.function.*;
+
+import java.util.*;
+
 /**
  * @author daniel.kasmeroglu@kasisoft.net
  */
@@ -105,6 +111,53 @@ public class AbstractJcxUnmarshaller {
     assertThat( read4, is( expected ) );
     
   }
+
+  protected <T extends Supplier<Node>> void assertNodes( JcxUnmarshaller unmarshaller, Class<T> type, String name ) throws Exception {
+    
+    T read1 = unmarshaller.createCreator( type ).apply( biboSession.getNode( "/" + name ) );
+    assertNotNull( read1 );
+    assertTrue( read1.get() instanceof Node );
+    
+    T read2 = unmarshaller.createLoader( type ).apply( biboSession.getNode( "/" + name ), type.newInstance() );
+    assertNotNull( read2 );
+    assertTrue( read2.get() instanceof Node );
+
+    T read3 = unmarshaller.createSubnodeCreator( type ).apply( biboSession.getRootNode(), name );
+    assertNotNull( read3 );
+    assertTrue( read3.get() instanceof Node );
+
+    T read4 = unmarshaller.createSubnodeLoader( type ).apply( biboSession.getRootNode(), name, type.newInstance() );
+    assertNotNull( read4 );
+    assertTrue( read4.get() instanceof Node );
+    
+  }
+
+  protected <T extends Supplier<List<Node>>> void assertNodeLists( JcxUnmarshaller unmarshaller, Class<T> type, String name ) throws Exception {
+    
+    T read1 = unmarshaller.createCreator( type ).apply( biboSession.getNode( "/" + name ) );
+    assertNotNull( read1 );
+    assertNodeList( read1.get() );
+    
+    T read2 = unmarshaller.createLoader( type ).apply( biboSession.getNode( "/" + name ), type.newInstance() );
+    assertNotNull( read2 );
+    assertNodeList( read2.get() );
+
+    T read3 = unmarshaller.createSubnodeCreator( type ).apply( biboSession.getRootNode(), name );
+    assertNotNull( read3 );
+    assertNodeList( read3.get() );
+
+    T read4 = unmarshaller.createSubnodeLoader( type ).apply( biboSession.getRootNode(), name, type.newInstance() );
+    assertNotNull( read4 );
+    assertNodeList( read4.get() );
+    
+  }
+  
+  private void assertNodeList( List<Node> list ) {
+    assertNotNull( list );
+    assertFalse( list.isEmpty() );
+    list.stream().forEach( $ -> assertTrue( $ instanceof Node ) );
+  }
+  
 
   protected <T> void assertCreationsNull( JcxUnmarshaller unmarshaller, Class<T> type, String name ) throws Exception {
     assertNull( unmarshaller.createCreator( type ).apply( biboSession.getNode( "/" + name ) ) );

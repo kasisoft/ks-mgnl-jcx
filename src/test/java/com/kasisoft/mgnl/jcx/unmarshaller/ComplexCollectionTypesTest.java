@@ -8,8 +8,11 @@ import com.kasisoft.mgnl.versionhandler.*;
 
 import org.testng.annotations.*;
 
+import javax.jcr.*;
 import javax.xml.bind.annotation.*;
 import javax.xml.bind.annotation.adapters.*;
+
+import java.util.function.*;
 
 import java.util.*;
 import java.util.List;
@@ -78,6 +81,74 @@ public class ComplexCollectionTypesTest extends AbstractJcxUnmarshaller {
 
   }
   
+  @Test
+  public void complexCollectionTypeNodes() throws Exception {
+    
+    WithXmlAdapter withXmlAdapter1 = new WithXmlAdapter();
+    withXmlAdapter1.setVarColor( Color.yellow );
+
+    WithXmlAdapter withXmlAdapter2 = new WithXmlAdapter();
+    withXmlAdapter2.setVarColor( Color.blue );
+
+    WithXmlAdapter withXmlAdapter3 = new WithXmlAdapter();
+    withXmlAdapter3.setVarColor( Color.red );
+
+    ComplexObjectType complex1 = new ComplexObjectType();
+    complex1.setWithXmlAdapter( withXmlAdapter1 );
+    
+    ComplexObjectType complex2 = new ComplexObjectType();
+    complex2.setWithXmlAdapter( withXmlAdapter2 );
+    
+    ComplexObjectType complex3 = new ComplexObjectType();
+    complex3.setWithXmlAdapter( withXmlAdapter3 );
+    
+    // setup the data
+    ComplexCollectionTypes expected = new ComplexCollectionTypes();
+    expected.setObjects( Arrays.asList( complex1, complex2, complex3 ) );
+    
+    TreeBuilder tb = new TreeBuilder()
+      .sContentNode( "complexCollectionTypes" )
+        .sContentNode( "objects1" )
+          .sContentNode( "withXmlAdapter" )
+            .property( "varColor" , "yellow" )
+          .sEnd()
+        .sEnd()
+        .sContentNode( "objects2" )
+          .sContentNode( "withXmlAdapter" )
+            .property( "varColor" , "blue" )
+          .sEnd()
+        .sEnd()
+        .sContentNode( "objects3" )
+          .sContentNode( "withXmlAdapter" )
+            .property( "varColor" , "red" )
+          .sEnd()
+        .sEnd()
+      .sEnd();
+    
+    tb.build( new MockNodeProducer( biboSession ) );
+
+    // run the tests
+    JcxUnmarshaller unmarshaller = new JcxUnmarshaller();
+    
+    assertNodeLists( unmarshaller, ComplexCollectionTypeNodes.class, "complexCollectionTypes" );
+
+  }
+  @Getter @Setter
+  @EqualsAndHashCode
+  @FieldDefaults(level = AccessLevel.PRIVATE)
+  public static final class ComplexCollectionTypeNodes implements Supplier<List<Node>> {
+    
+    @XmlElement
+    @GenericsType(Node.class)
+    List<Node>    objects;
+
+    @Override
+    public List<Node> get() {
+      return objects;
+    }
+
+  } /* ENCLASS */
+
   @Getter @Setter
   @EqualsAndHashCode
   @FieldDefaults(level = AccessLevel.PRIVATE)
