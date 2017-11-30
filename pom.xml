@@ -60,9 +60,9 @@
   
     <!-- versioning: dependencies -->
     <version-kcl>2.9</version-kcl>
-    <version-magnolia>5.6-0-SNAPSHOT</version-magnolia>
-    <version-mgnl-util>0.5-SNAPSHOT</version-mgnl-util>
-    <version-mgnl-versionhandler>0.4-SNAPSHOT</version-mgnl-versionhandler>
+    <version-magnolia>5.6-0</version-magnolia>
+    <version-mgnl-util>0.5</version-mgnl-util>
+    <version-mgnl-versionhandler>0.4</version-mgnl-versionhandler>
     <version-tomcat>9.0.1</version-tomcat>
     
     <!-- versioning: plugins -->
