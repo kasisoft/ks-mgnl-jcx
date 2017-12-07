@@ -2,6 +2,8 @@ package com.kasisoft.mgnl.jcx;
 
 import static com.kasisoft.mgnl.jcx.internal.Messages.*;
 
+import info.magnolia.repository.*;
+
 import info.magnolia.context.*;
 
 import info.magnolia.jcr.*;
@@ -57,7 +59,9 @@ import info.magnolia.objectfactory.guice.*;
 @Singleton
 public class JcxUnmarshaller {
 
+  // allows to specify that the current node is the source of the data
   public  static final String NAME_DIRECT   = "##direct";
+  
   private static final String NAME_DEFAULT  = "##default";
   
   private static final Consumer<Object> DO_NOTHING = $ -> {};
@@ -196,9 +200,49 @@ public class JcxUnmarshaller {
     result.put( Float     . class, PropertyLoaders::toFloat       );
     result.put( Double    . class, PropertyLoaders::toDouble      );
     result.put( String    . class, PropertyLoaders::toString      );
+    result.put( Node      . class, this::toNode                   );
     
     return result;
     
+  }
+  
+  private Node toNode( Node source, String property ) {
+    Node result = null;
+    if( source != null ) {
+      try {
+        String value = PropertyLoaders.toString( source, property );
+        if( value != null ) {
+          Session session = MgnlContext.getJCRSession( RepositoryConstants.WEBSITE );
+          String uuid     = getUuid( value );
+          if( uuid != null ) {
+            result = session.getNodeByIdentifier( uuid );
+          } else {
+            result = session.getNode( value );
+          }
+        }
+      } catch( Exception ex ) {
+        throw NodeFunctions.toRuntimeRepositoryException(ex);
+      }
+    }
+    return result;
+  }
+  
+  private String getUuid( String value ) {
+    int open  = value.indexOf('{');
+    int close = value.indexOf('}');
+    if( (open != -1) && (close > open) ) {
+      value = StringFunctions.cleanup( value.substring( open + 1, close ) ); 
+    }
+    String result = null;
+    if( value != null ) {
+      try {
+        UUID.fromString( value );
+        result = value;
+      } catch( Exception ex ) {
+        // invalid UUID so there's none
+      }
+    }
+    return result;
   }
 
   protected synchronized Map<String, BiFunction<Node, String, ?>> setupMetaAttributeLoaders() {
