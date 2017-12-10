@@ -604,7 +604,6 @@ public class JcxUnmarshaller {
       while( iterator.hasNext() ) {
         result.add( iterator.nextNode().getName() );
       }
-      Collections.sort( result );
     }
     return result;
   }
