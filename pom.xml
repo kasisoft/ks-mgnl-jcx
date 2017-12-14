@@ -14,7 +14,7 @@
   
   <groupId>com.kasisoft.mgnl</groupId>
   <artifactId>ks-mgnl-jcx</artifactId>
-  <version>0.4</version>
+  <version>0.5-SNAPSHOT</version>
 
   <name>MGNL :: JCR Xml Binding</name>
   <url>https://kasisoft.com/bitbucket/projects/MGNL/repos/ks-mgnl-jcx</url>
