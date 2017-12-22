@@ -21,6 +21,9 @@ public class Messages {
   
   @I18N("the nodes '%s' property '%s' points to a non existing target (workspace='%s', uuid='%s')")
   public static I18NFormatter                 msg_invalid_reference;
+
+  @I18N("the following elements are incomplete: %s")
+  public static I18NFormatter                 msg_incomplete_type;
   
   @I18N("%s [property: %s] - it's necessery to provide a GenericsType annotation with the generic type")
   public static I18NFormatter                 msg_missing_generics_type;

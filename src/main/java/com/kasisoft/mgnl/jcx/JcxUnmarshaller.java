@@ -458,6 +458,15 @@ public class JcxUnmarshaller {
           property.setLoader( ($1, $2) -> getElement( $1, $2, type, property.getType() ) );
         }
       }
+
+      List<PropertyDescription> invalids = properties.parallelStream().filter( $ -> $.getLoader() == null ).collect( Collectors.toList() );
+      if( ! invalids.isEmpty() ) {
+        String list = invalids.parallelStream()
+          .map( $ -> String.format( "%s$%s[%s]", $.getOwningType(), $.getPropertyName(), $.getType() ) )
+          .reduce( "", ($1, $2) -> $1 + ", " + $2 )
+          ;
+        throw new JcxException( msg_incomplete_type.format( list ) );
+      }
       
       Consumer<Object> postprocess = DO_NOTHING;
       if( IPostProcessor.class.isAssignableFrom( type ) ) {
