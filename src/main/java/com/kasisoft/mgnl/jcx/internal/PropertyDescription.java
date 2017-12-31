@@ -25,6 +25,17 @@ import lombok.*;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public final class PropertyDescription {
 
+  public enum LoaderType {
+    LT_ATTRIBUTE_COLLECTION_WITH_ADAPTER,
+    LT_ATTRIBUTE_COLLECTION_WITHOUT_ADAPTER,
+    LT_ATTRIBUTE_WITH_ADAPTER,
+    LT_ATTRIBUTE_WITHOUT_ADAPTER,
+    LT_META_ATTRIBUTE,
+    LT_ELEMENT_BY_REFERENCE,
+    LT_ELEMENT_COLLECTION,
+    LT_ELEMENT
+  }
+  
   private static final Set<String> META_ATTRIBUTES = new HashSet<>( Arrays.asList(
     "@depth", "@uuid", "@identifier", "@name", "@path", "@nodeType"
   ) );
@@ -56,6 +67,9 @@ public final class PropertyDescription {
   // the function to load the property value (node, property name, target object)
   BiFunction<Node, String, ?>               loader;
 
+  // not really necessary but informative while debugging
+  LoaderType                                loaderType;
+  
   Class<? extends XmlAdapter>               xmlAdapter;
   
   boolean                                   required = false;

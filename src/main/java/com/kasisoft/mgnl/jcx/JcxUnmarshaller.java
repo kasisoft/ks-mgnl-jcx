@@ -13,6 +13,7 @@ import com.kasisoft.libs.common.text.*;
 import com.kasisoft.libs.common.annotation.*;
 import com.kasisoft.libs.common.function.*;
 import com.kasisoft.mgnl.jcx.internal.*;
+import com.kasisoft.mgnl.jcx.internal.PropertyDescription.*;
 import com.kasisoft.mgnl.util.*;
 
 import javax.annotation.*;
@@ -435,27 +436,35 @@ public class JcxUnmarshaller {
             // we're dealing with a collection here
             if( property.getXmlAdapter() != null ) {
               property.setLoader( ($1, $2) -> getAttributesUsingXmlAdapter( $1, $2, property.getType(), property.getXmlAdapter() ) );
+              property.setLoaderType( LoaderType.LT_ATTRIBUTE_COLLECTION_WITH_ADAPTER );
             } else {
               property.setLoader( ($1, $2) -> getAttributes( $1, $2, property.getType() ) );
+              property.setLoaderType( LoaderType.LT_ATTRIBUTE_COLLECTION_WITHOUT_ADAPTER );
             }
           } else {
             // a simple attribute
             if( property.getXmlAdapter() != null ) {
               property.setLoader( getXmlAdapterLoader( property.getXmlAdapter() ) );
+              property.setLoaderType( LoaderType.LT_ATTRIBUTE_WITH_ADAPTER );
             } else {
               property.setLoader( getAttributeLoader( property.getType() ) );
+              property.setLoaderType( LoaderType.LT_ATTRIBUTE_WITHOUT_ADAPTER );
             }
           }
         } else if( property.isMetaAttribute() ) {
           property.setLoader( metaAttributeLoaders.get( property.getPropertyName() ) );
+          property.setLoaderType( LoaderType.LT_META_ATTRIBUTE );
         } else if( property.getJcxRef() != null ) {
           property.setLoader( ($1, $2) -> getElementByReference( $1, $2, type, property.getType(), property.getJcxRef() ) );
+          property.setLoaderType( LoaderType.LT_ELEMENT_BY_REFERENCE );
         } else if( property.getCollectionType() != null ) {
           // @XmlElement on a collection
           property.setLoader( ($1, $2) -> getElements( $1, $2, type, property.getSubProperty(), property.getType() ) );
+          property.setLoaderType( LoaderType.LT_ELEMENT_COLLECTION );
         } else {
           // @XmlElement on a single element
           property.setLoader( ($1, $2) -> getElement( $1, $2, type, property.getType() ) );
+          property.setLoaderType( LoaderType.LT_ELEMENT );
         }
       }
 
