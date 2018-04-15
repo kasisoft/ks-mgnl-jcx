@@ -14,7 +14,7 @@
   
   <groupId>com.kasisoft.mgnl</groupId>
   <artifactId>ks-mgnl-jcx</artifactId>
-  <version>0.5-SNAPSHOT</version>
+  <version>0.5</version>
 
   <name>MGNL :: JCR Xml Binding</name>
   <url>https://github.com/costamojan/ks-mgnl-jcx.git</url>
@@ -61,9 +61,9 @@
   
     <!-- versioning: dependencies -->
     <version-kcl>2.9</version-kcl>
-    <version-magnolia>5.6-2</version-magnolia>
-    <version-mgnl-util>0.8-SNAPSHOT</version-mgnl-util>
-    <version-mgnl-versionhandler>0.6-SNAPSHOT</version-mgnl-versionhandler>
+    <version-magnolia>5.6-3</version-magnolia>
+    <version-mgnl-util>0.8</version-mgnl-util>
+    <version-mgnl-versionhandler>0.6</version-mgnl-versionhandler>
     <version-tomcat>9.0.1</version-tomcat>
     
     <!-- versioning: plugins -->
