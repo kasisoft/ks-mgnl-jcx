@@ -6,10 +6,9 @@ JCR data structure is therefore mostly hidden.
 
 # Infos
 
-* [eMail: daniel.kasmeroglu@kasisoft.net](mailto:daniel.kasmeroglu@kasisoft.net)
-* [Jira](https://kasisoft.com/jira/projects/MGNLJCX)
-* [Jenkins](https://kasisoft.com/jenkins/job/mgnl.ks-mgnl-jcx)
-* [GIT](https://kasisoft.com/bitbucket/projects/MGNL/repos/ks-mgnl-jcx)
+* [eMail: daniel.kasmeroglu@kasisoft.com](mailto:daniel.kasmeroglu@kasisoft.com)
+* [Issues](https://github.com/kasisoft/ks-mgnl-jcx/issues)
+* [GIT](https://github.com/kasisoft/ks-mgnl-jcx)
 
 
 # Development Setup
